@@ -9,6 +9,7 @@ router = APIRouter(tags=["submissions"])
 
 
 @router.post("/submissions", response_model=Tribute, status_code=201)
+@router.post("/tributes", response_model=Tribute, status_code=201)
 def create_submission(payload: SubmissionCreate, db: Session = Depends(get_db)) -> Tribute:
     if payload.display_mode == DisplayMode.named and not (payload.submitted_name or "").strip():
         raise HTTPException(status_code=400, detail="submitted_name is required for named submissions")

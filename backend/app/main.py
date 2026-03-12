@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import admin, public, submissions
+from app.api.routes import admin, admin_auth, public, submissions
 
 app = FastAPI(title="Ken Memorial API", version="0.1.0")
 
@@ -15,7 +15,14 @@ app.add_middleware(
 
 app.include_router(public.router, prefix="/api/v1")
 app.include_router(submissions.router, prefix="/api/v1")
+app.include_router(admin_auth.router, prefix="/api/v1/admin")
 app.include_router(admin.router, prefix="/api/v1/admin")
+
+# Aliases that match the PRD endpoint style.
+app.include_router(public.router, prefix="/api")
+app.include_router(submissions.router, prefix="/api")
+app.include_router(admin_auth.router, prefix="/api/admin")
+app.include_router(admin.router, prefix="/api/admin")
 
 
 @app.get("/health")

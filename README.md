@@ -19,17 +19,25 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
   - `/tributes` Tribute Wall with filters and full-detail modal
   - `/submit` Tribute submission with privacy notice
   - `/guidelines` Submission/privacy guidelines
+- Admin moderation app:
+  - `/admin/login`
+  - `/admin/tributes`
+  - Protected moderation endpoints with bearer token auth
 - Public tribute wall filters:
   - tribute type
-  - year tag
-  - author visibility (named/anonymous)
+  - year
+  - anonymous vs named
   - featured only
 - Submission fields:
   - type, title, content
   - display mode + optional display name
   - optional relationship to Ken
   - optional year tag / occasion date
+  - optional single image attachment (JPEG/PNG/WEBP, max 3MB)
 - Moderation API actions:
+  - admin login
+  - list/filter admin tributes
+  - patch moderation/content metadata
   - approve/reject/hide/unhide
   - pin/unpin
 
@@ -39,6 +47,27 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
 
 ```bash
 docker compose up -d postgres
+```
+
+### Database Admin UI (Adminer)
+
+```bash
+docker compose up -d adminer
+```
+
+Open: `http://localhost:8080`
+
+Login values:
+- System: `PostgreSQL`
+- Server: `postgres`
+- Username: `postgres`
+- Password: `postgres`
+- Database: `ken_memorial`
+
+### Full Local Stack
+
+```bash
+docker compose up --build -d
 ```
 
 ### Frontend
@@ -62,7 +91,7 @@ uvicorn app.main:app --reload
 
 ## Next Build Steps
 
-1. Add admin authentication and protected admin frontend routes
-2. Add backend integration tests for filter and moderation flows
-3. Add anti-spam/rate limiting and moderation audit trail improvements
-4. Deploy staging environment on AWS with CI/CD
+1. Add stronger auth hardening (password hashing, refresh strategy, lockout)
+2. Add backend integration tests for admin patch and visibility rules
+3. Add anti-spam/rate limiting and optional captcha
+4. Deploy staging on AWS with CI/CD and secret management

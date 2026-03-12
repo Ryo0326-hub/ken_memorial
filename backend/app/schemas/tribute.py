@@ -1,7 +1,9 @@
+import base64
+import binascii
 from datetime import date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
 class TributeType(str, Enum):
@@ -12,6 +14,11 @@ class TributeType(str, Enum):
 class DisplayMode(str, Enum):
     named = "named"
     anonymous = "anonymous"
+
+
+class Visibility(str, Enum):
+    public = "public"
+    private = "private"
 
 
 class TributeStatus(str, Enum):
@@ -30,11 +37,36 @@ class SubmissionCreate(BaseModel):
     relationship_to_ken: str | None = Field(default=None, max_length=80)
     year_tag: int | None = Field(default=None, ge=2000, le=2100)
     occasion_date: date | None = None
+    image_data_url: str | None = Field(default=None, max_length=4_500_000)
 
     @model_validator(mode="after")
-    def validate_title_for_yearly_letters(self) -> "SubmissionCreate":
-        if self.type == TributeType.yearly_letter and not self.title:
+    def validate_submission(self) -> "SubmissionCreate":
+        if self.type == TributeType.yearly_letter and not (self.title or "").strip():
             raise ValueError("title is required for yearly tribute letters")
+
+        if self.type == TributeType.birthday and len(self.content.strip()) > 1500:
+            raise ValueError("birthday messages must be 1500 characters or fewer")
+
+        if self.type == TributeType.yearly_letter and len(self.content.strip()) < 50:
+            raise ValueError("yearly tribute letters must be at least 50 characters")
+
+        if self.image_data_url:
+            if not self.image_data_url.startswith("data:image/") or ";base64," not in self.image_data_url:
+                raise ValueError("image must be a valid base64 data URL")
+
+            header, encoded = self.image_data_url.split(",", 1)
+            mime = header[5:].split(";")[0]
+            if mime not in {"image/jpeg", "image/png", "image/webp"}:
+                raise ValueError("image must be JPEG, PNG, or WEBP")
+
+            try:
+                raw_bytes = base64.b64decode(encoded, validate=True)
+            except (binascii.Error, ValueError) as exc:
+                raise ValueError("image data is invalid") from exc
+
+            if len(raw_bytes) > 3 * 1024 * 1024:
+                raise ValueError("image must be 3MB or smaller")
+
         return self
 
 
@@ -50,7 +82,23 @@ class Tribute(BaseModel):
     relationship_to_ken: str | None = None
     year_tag: int | None = None
     occasion_date: date | None = None
+    image_data_url: str | None = None
     public_display_name: str
     status: TributeStatus
+    visibility: Visibility
+    moderation_notes: str | None = None
     submitted_at: datetime
     is_featured: bool = False
+    created_at: datetime
+    updated_at: datetime
+    approved_at: datetime | None = None
+
+    @computed_field
+    @property
+    def is_anonymous(self) -> bool:
+        return self.display_mode == DisplayMode.anonymous
+
+    @computed_field
+    @property
+    def public_author_label(self) -> str:
+        return self.public_display_name
