@@ -11,19 +11,27 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
 - `backend/`: Python FastAPI API scaffold
 - `infra/`: deployment and environment templates
 
-## MVP Scope (v1)
+## Current Public Experience
 
-- Public memorial homepage and tribute wall
-- Submission form for:
-  - birthday messages
-  - yearly tribute letters
-- Identity choice:
-  - display name shown
-  - anonymous display
-- Admin moderation workflow:
-  - review pending submissions
-  - approve/reject/hide
-  - optional pinning
+- Multi-page memorial app:
+  - `/` Home
+  - `/about` Ken's Story
+  - `/tributes` Tribute Wall with filters and full-detail modal
+  - `/submit` Tribute submission with privacy notice
+  - `/guidelines` Submission/privacy guidelines
+- Public tribute wall filters:
+  - tribute type
+  - year tag
+  - author visibility (named/anonymous)
+  - featured only
+- Submission fields:
+  - type, title, content
+  - display mode + optional display name
+  - optional relationship to Ken
+  - optional year tag / occasion date
+- Moderation API actions:
+  - approve/reject/hide/unhide
+  - pin/unpin
 
 ## Quick Start (Scaffold)
 
@@ -54,7 +62,7 @@ uvicorn app.main:app --reload
 
 ## Next Build Steps
 
-1. Add moderation auth for admin routes
-2. Add tests and CI pipeline
-3. Add anti-spam/rate limiting
-4. Containerize and deploy to AWS
+1. Add admin authentication and protected admin frontend routes
+2. Add backend integration tests for filter and moderation flows
+3. Add anti-spam/rate limiting and moderation audit trail improvements
+4. Deploy staging environment on AWS with CI/CD

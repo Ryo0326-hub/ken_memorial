@@ -12,205 +12,163 @@ Draft v1.0
 
 Ryo Kitano
 
+## Intended Use
+
+This document guides architecture, implementation, sequencing, and product decisions for AI-assisted and human development.
+
 ## 1. Executive Summary
 
-Ken Memorial is a digital memorial website honoring Ken, who passed away in November 2021 at age 17. The product provides a respectful, emotionally warm, durable online space where friends, family, and loved ones can share birthday messages, annual tribute letters, and memories over time.
+Ken Memorial is a digital memorial website honoring Ken, who passed away in November 2021 at age 17. The product provides a respectful and durable online space where friends and family can share birthday messages, yearly tribute letters, and memories over time.
 
-The product balances three goals:
+The site balances:
 
-1. Emotional purpose: preserve Ken's memory in a beautiful and dignified way.
-2. Community purpose: allow meaningful tributes with optional anonymity.
-3. Technical growth purpose: support practical learning in TypeScript, Python, AWS, Docker, CI/CD, Kubernetes, and future RAG.
+1. Emotional purpose: preserve Ken's memory with dignity.
+2. Community purpose: enable named or anonymous tributes.
+3. Technical growth purpose: practical learning in TypeScript, Python, AWS, Docker, CI/CD, Kubernetes, and future RAG.
 
 ## 2. Product Vision
 
-Create a long-lasting digital memorial site where Ken's friends and loved ones can leave thoughtful tributes presented on a beautiful tribute wall/canvas layout.
+Create a long-lasting digital memorial site where tributes are displayed in a tasteful wall/canvas layout with strong moderation and privacy controls.
 
-Experience principles:
-
-- Respectful
-- Emotionally warm
-- Timeless
-- Easy to contribute to
-- Safe from spam and abuse
-- Maintainable over many years
-
-Not a social feed; a curated remembrance space.
+Tone: respectful, warm, timeless, calm, maintainable.
 
 ## 3. Problem Statement
 
-Mainstream social platforms are not designed for long-term remembrance. Content gets buried, moderation is inconsistent, and tone is transient.
+General social platforms are not optimized for long-term remembrance: content gets buried, moderation and privacy are inconsistent, and tone is noisy.
 
-Ken Memorial addresses this by enabling:
-
-- Dedicated birthday and yearly tribute submissions
-- Moderated publishing before public visibility
-- Optional identity disclosure for contributors
-- Thoughtful presentation in a curated tribute wall
-
-Core question:
-
-How can we create a dignified, community-driven memorial website that makes tribute contribution easy while preserving quality, privacy, and emotional sensitivity?
+Ken Memorial solves this with dedicated tribute submissions, moderation-first publishing, and curated display.
 
 ## 4. Goals
 
 ### 4.1 Primary Goals
 
-1. Build a public memorial website dedicated to Ken.
-2. Support two tribute types:
-   - Birthday message
-   - Yearly tribute letter
-3. Allow contributors to post as named or anonymous.
-4. Display approved tributes in a polished visual wall.
+1. Public memorial website dedicated to Ken.
+2. Support tribute types: birthday messages and yearly tribute letters.
+3. Support named or anonymous contributions.
+4. Display approved tributes in a polished memorial wall.
 5. Provide admin moderation before publication.
-6. Build with production-oriented engineering quality.
+6. Build with production-quality engineering practices.
 
 ### 4.2 Secondary Goals
 
 1. Maintainable full-stack architecture.
-2. Durable archive foundation for long-term growth.
-3. Future support for media uploads and richer search.
+2. Durable memory archive foundation.
+3. Future support for media and richer archive/search.
 4. Clear UX around privacy and identity disclosure.
 
 ### 4.3 Learning Goals
 
-Develop practical skills in:
+TypeScript, Python, AWS, Docker, CI/CD, Kubernetes (later), RAG (future).
 
-- TypeScript
-- Python
-- AWS
-- Docker
-- CI/CD
-- Kubernetes (later stage)
-- RAG (future archive/search enhancement)
+## 5. Non-Goals (Initial)
 
-## 5. Non-Goals (v1)
-
-1. Full social network features (likes/comments/follows/DMs).
+1. Social network features (likes/comments/follows/DMs).
 2. Real-time chat.
-3. Public user accounts for general users.
-4. User self-editing after publication.
-5. Auto-publish without moderation.
+3. Public user accounts.
+4. Open post-publication edits by submitters.
+5. Fully automated publishing without moderation.
 6. AI-generated memorial messages.
-7. Complex microservice architecture.
+7. Complex microservices.
 8. Kubernetes as initial deployment target.
-9. Genealogy/family-tree systems.
-10. Literal drawing-canvas engine.
-
-The canvas metaphor is a curated card/tile layout.
+9. Genealogy/family-tree features.
+10. Freeform drawing-canvas implementation.
 
 ## 6. Target Users
 
-### 6.1 Primary Users
+1. Ken's friends.
+2. Family members/loved ones.
+3. Site admins/moderators (initially Ryo).
+4. Future private-archive users.
 
-Ken's friends and loved ones who want to submit and browse tributes, optionally anonymously.
+## 7. User Personas
 
-### 6.2 Secondary Users
+1. Close Friend Contributor: wants simple heartfelt submission with anonymity option.
+2. Family Reader: needs calm, beautiful, moderated experience.
+3. Site Admin: needs efficient moderation and curation controls.
 
-Site administrator(s), initially Ryo, responsible for review, curation, and moderation quality.
+## 8. Core Product Principles
 
-### 6.3 Future Users
+1. Dignity first.
+2. Moderation by default.
+3. Privacy clarity.
+4. Simplicity over overengineering.
+5. Longevity.
+6. Calm UX.
+7. Extensibility.
 
-Trusted family/admin users managing private archive assets.
+## 9. Core Use Cases
 
-## 7. Personas
+1. Visitor reads memorial homepage.
+2. Visitor browses tribute wall.
+3. Visitor submits birthday message.
+4. Visitor submits yearly letter.
+5. Visitor chooses anonymity.
+6. Admin moderates submission.
+7. Approved tribute appears publicly.
+8. Visitor filters tributes.
 
-### Persona A - Close Friend Contributor
+## 10. Functional Scope
 
-- Age: late teens to mid-20s
-- Motivation: share heartfelt remembrance quickly and safely
-- Need: low-friction submission and privacy choice
+### 10.1 Public Site
 
-### Persona B - Family Reader/Contributor
+1. Homepage
+2. About / Ken's Story
+3. Tribute Wall / Canvas
+4. Submit Tribute
+5. Optional Guidelines page
 
-- Age: broad
-- Motivation: preserve memory with dignity
-- Need: polished reading experience and trustworthy moderation
+### 10.2 Admin
 
-### Persona C - Admin Curator
+1. Admin login
+2. Moderation dashboard
+3. Tribute management and curation
 
-- Role: trusted moderator
-- Motivation: keep space respectful and high quality
-- Need: efficient moderation queue and curation tools
+## 11. Functional Requirements
 
-## 8. Core User Flows
+- Submission without public accounts
+- Named vs anonymous visibility
+- Moderation queue before publication
+- Public wall shows approved-only tributes
+- Tribute filtering by type/year/visibility/featured
+- Admin actions: approve/reject/hide/edit/pin
+- Moderation timestamps and audit metadata
+- Admin authentication and authorization
 
-1. Public visitor browses tribute wall.
-2. Contributor submits tribute with type, content, and identity setting.
-3. Submission enters pending moderation.
-4. Admin reviews and approves/rejects/hides.
-5. Approved tribute appears on wall; optional featured pin.
+## 12. Suggested UX Flows
 
-## 9. Functional Requirements (MVP)
+1. Public visitor flow
+2. Tribute submission flow
+3. Admin moderation flow
 
-### 9.1 Public Site
+## 13. Information Architecture
 
-- Memorial landing section for Ken
-- Tribute wall with approved content only
-- Filters by tribute type and year
+### Public Pages
 
-### 9.2 Submission
+- `/`
+- `/about`
+- `/tributes`
+- `/tributes/[id]` or modal detail
+- `/submit`
+- `/guidelines`
 
-- Form fields:
-  - Tribute type (`birthday`, `yearly_letter`)
-  - Message content
-  - Contributor display name (optional if anonymous)
-  - Identity choice (`named`, `anonymous`)
-- Basic anti-spam validation and rate limiting
-- Confirmation message after submission
+### Admin Pages
 
-### 9.3 Moderation Admin
+- `/admin/login`
+- `/admin`
+- `/admin/tributes`
+- `/admin/tributes/pending`
+- `/admin/tributes/[id]`
 
-- Secure admin login (single admin for v1 acceptable)
-- Pending queue
-- Actions: approve/reject/hide/unhide/pin/unpin
-- Internal moderation notes
-- Audit fields (timestamps, reviewer)
+## 14. Data Model (Summary)
 
-## 10. Non-Functional Requirements
+Core tribute record supports:
 
-- Availability: stable public access
-- Security: server-side validation, input sanitization
-- Privacy: anonymous handling must not reveal identity publicly
-- Performance: wall loads quickly on mobile and desktop
-- Accessibility: keyboard navigation and readable contrast
-- Maintainability: clean structure, tests, CI-ready setup
+- Tribute type and optional title
+- Content body
+- Display mode and optional submitted name
+- Public display name
+- Optional relationship to Ken
+- Optional year tag and occasion date
+- Moderation state and timestamps
+- Featured flag and moderation notes
 
-## 11. Data Model (MVP)
-
-Primary entity: `Tribute`
-
-Key attributes:
-
-- `id`
-- `type` (`birthday`, `yearly_letter`)
-- `content`
-- `submitted_name`
-- `display_mode` (`named`, `anonymous`)
-- `public_display_name`
-- `status` (`pending`, `approved`, `rejected`, `hidden`)
-- `is_featured`
-- `moderation_notes`
-- `submitted_at`, `reviewed_at`, `published_at`
-
-## 12. Milestones
-
-1. M0 - Foundation: repo setup, CI skeleton, base app shells
-2. M1 - Submission + moderation backend
-3. M2 - Public wall UI + API integration
-4. M3 - Hardening: tests, anti-spam, deployment
-5. M4 - Post-v1: media support and archive/search evolution
-
-## 13. Success Metrics (MVP)
-
-- Tribute submission completion rate
-- Moderation turnaround time
-- Share of approved tributes published without incident
-- Qualitative sentiment from family/friends on tone and usability
-
-## 14. Future Extensions
-
-- Media attachments (photo/audio/video)
-- Private archive mode for trusted users
-- Search and thematic browsing
-- RAG-powered memory assistant over approved private corpus

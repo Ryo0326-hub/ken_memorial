@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.tribute import Tribute, TributeStatus
-from app.services.tributes import get_by_id, list_tributes_by_status, set_status
+from app.services.tributes import get_by_id, list_tributes_by_status, set_featured, set_status
 
 router = APIRouter(tags=["admin"])
 
@@ -37,3 +37,27 @@ def hide_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
     if not tribute:
         raise HTTPException(status_code=404, detail="Tribute not found")
     return set_status(db, tribute, TributeStatus.hidden)
+
+
+@router.post("/tributes/{tribute_id}/unhide", response_model=Tribute)
+def unhide_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
+    tribute = get_by_id(db, tribute_id)
+    if not tribute:
+        raise HTTPException(status_code=404, detail="Tribute not found")
+    return set_status(db, tribute, TributeStatus.approved)
+
+
+@router.post("/tributes/{tribute_id}/pin", response_model=Tribute)
+def pin_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
+    tribute = get_by_id(db, tribute_id)
+    if not tribute:
+        raise HTTPException(status_code=404, detail="Tribute not found")
+    return set_featured(db, tribute, True)
+
+
+@router.post("/tributes/{tribute_id}/unpin", response_model=Tribute)
+def unpin_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
+    tribute = get_by_id(db, tribute_id)
+    if not tribute:
+        raise HTTPException(status_code=404, detail="Tribute not found")
+    return set_featured(db, tribute, False)
