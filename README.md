@@ -13,27 +13,29 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
 
 ## Current Public Experience
 
-- Multi-page memorial app:
-  - `/` Home
-  - `/about` Ken's Story
-  - `/tributes` Tribute Wall with filters and full-detail modal
-  - `/submit` Tribute submission with privacy notice
+- Public memorial app:
+  - `/` Home (hero + integrated Tribute Wall)
+  - `/submit` Leave a Tribute
   - `/guidelines` Submission/privacy guidelines
 - Admin moderation app:
   - `/admin/login`
   - `/admin/tributes`
   - Protected moderation endpoints with bearer token auth
+- Home page highlights:
+  - integrated cork-board Tribute Wall directly under hero
+  - realistic sticky-note design with handwritten tribute text styles
+  - hero photo frame (interactive click-to-open)
 - Public tribute wall filters:
   - tribute type
-  - year
   - anonymous vs named
-  - featured only
 - Submission fields:
   - type, title, content
   - display mode + optional display name
-  - optional relationship to Ken
-  - optional year tag / occasion date
+  - sticky note color selection (Sky, Mint, Lavender)
+  - pen style selection (Classic, Marker, Fountain)
   - optional single image attachment (JPEG/PNG/WEBP, max 3MB)
+- Automatic metadata:
+  - posted date is recorded automatically and displayed on each sticky note
 - Moderation API actions:
   - admin login
   - list/filter admin tributes
@@ -78,6 +80,8 @@ npm install
 npm run dev
 ```
 
+Open: `http://localhost:5173`
+
 ### Backend
 
 ```bash
@@ -88,6 +92,8 @@ pip install -e .
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
+
+Open API: `http://localhost:8000`
 
 ## Next Build Steps
 
