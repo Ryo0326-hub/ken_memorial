@@ -32,6 +32,8 @@ def create_submission(db: Session, payload: SubmissionCreate) -> TributeModel:
         year_tag=payload.year_tag,
         occasion_date=payload.occasion_date,
         image_data_url=payload.image_data_url,
+        sticky_note_color=payload.sticky_note_color,
+        pen_style=payload.pen_style,
         public_display_name=display_name,
         status=TributeStatus.pending,
         visibility=Visibility.public,

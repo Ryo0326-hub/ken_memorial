@@ -1,9 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useState } from "react";
 
 type TributeType = "birthday" | "yearly_letter";
 type DisplayMode = "named" | "anonymous";
 type TributeStatus = "pending" | "approved" | "rejected" | "hidden";
 type Visibility = "public" | "private";
+type StickyNoteColor = "sky" | "mint" | "lavender";
+type PenStyle = "classic" | "marker" | "fountain" | "gel";
 
 type Tribute = {
   id: string;
@@ -16,6 +18,8 @@ type Tribute = {
   year_tag: number | null;
   occasion_date: string | null;
   image_data_url: string | null;
+  sticky_note_color: StickyNoteColor;
+  pen_style: PenStyle;
   public_display_name: string;
   status: TributeStatus;
   visibility: Visibility;
@@ -35,18 +39,15 @@ type SubmissionFormState = {
   content: string;
   display_mode: DisplayMode;
   submitted_name: string;
-  relationship_to_ken: string;
-  year_tag: string;
-  occasion_date: string;
   image_data_url: string | null;
   image_name: string;
+  sticky_note_color: StickyNoteColor;
+  pen_style: PenStyle;
 };
 
 type TributeFilters = {
   type: "all" | TributeType;
-  year: string;
   anonymous: "all" | "true" | "false";
-  featured: boolean;
 };
 
 type AdminPatchForm = {
@@ -68,22 +69,127 @@ const INITIAL_FORM: SubmissionFormState = {
   content: "",
   display_mode: "named",
   submitted_name: "",
-  relationship_to_ken: "",
-  year_tag: "",
-  occasion_date: "",
   image_data_url: null,
-  image_name: ""
+  image_name: "",
+  sticky_note_color: "mint",
+  pen_style: "classic"
 };
 
 const INITIAL_FILTERS: TributeFilters = {
   type: "all",
-  year: "",
-  anonymous: "all",
-  featured: false
+  anonymous: "all"
 };
 
 const ADMIN_TOKEN_KEY = "ken_admin_token";
+const TRIBUTE_STYLE_OVERRIDES_KEY = "ken_tribute_style_overrides";
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const NOTE_COLORS: Array<{ value: StickyNoteColor; label: string; className: string }> = [
+  { value: "sky", label: "Sky", className: "note-sky" },
+  { value: "mint", label: "Mint", className: "note-mint" },
+  { value: "lavender", label: "Lavender", className: "note-lavender" }
+];
+const PEN_STYLES: Array<{ value: PenStyle; label: string; className: string; preview: string }> = [
+  { value: "classic", label: "Classic Pen", className: "pen-classic", preview: "Steady handwriting" },
+  { value: "marker", label: "Marker", className: "pen-marker", preview: "Bold strokes" },
+  { value: "fountain", label: "Fountain Pen", className: "pen-fountain", preview: "Elegant flow" }
+];
+
+function normalizeStickyNoteColor(value: string | null | undefined): StickyNoteColor {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw.includes("lavender") || raw.includes("lavendar")) {
+    return "lavender";
+  }
+  if (raw.includes("sky")) {
+    return "sky";
+  }
+  if (raw.includes("mint")) {
+    return "mint";
+  }
+  if (raw.includes("sunshine")) {
+    return "mint";
+  }
+  if (raw.includes("blossom")) {
+    return "lavender";
+  }
+  return "mint";
+}
+
+function toStickyNoteStyle(value: string | null | undefined): CSSProperties {
+  const normalized = normalizeStickyNoteColor(value);
+  if (normalized === "sky") {
+    return {
+      "--note-top": "#d3eff7",
+      "--note-bottom": "#acd7e5"
+    } as CSSProperties;
+  }
+  if (normalized === "lavender") {
+    return {
+      "--note-top": "#ece4fa",
+      "--note-bottom": "#d9cbed"
+    } as CSSProperties;
+  }
+  return {
+    "--note-top": "#dff1d4",
+    "--note-bottom": "#c7e2b5"
+  } as CSSProperties;
+}
+
+function normalizePenStyle(value: string | null | undefined): PenStyle {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw.includes("marker")) {
+    return "marker";
+  }
+  if (raw.includes("fountain")) {
+    return "fountain";
+  }
+  return "classic";
+}
+
+function readTributeStyleOverrides(): Record<string, { sticky_note_color: StickyNoteColor; pen_style: PenStyle }> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  try {
+    const raw = window.localStorage.getItem(TRIBUTE_STYLE_OVERRIDES_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, { sticky_note_color?: string; pen_style?: string }>;
+    const normalized: Record<string, { sticky_note_color: StickyNoteColor; pen_style: PenStyle }> = {};
+    for (const [id, style] of Object.entries(parsed)) {
+      normalized[id] = {
+        sticky_note_color: normalizeStickyNoteColor(style?.sticky_note_color),
+        pen_style: normalizePenStyle(style?.pen_style)
+      };
+    }
+    return normalized;
+  } catch {
+    return {};
+  }
+}
+
+function writeTributeStyleOverride(tributeId: string, stickyColor: StickyNoteColor, penStyle: PenStyle): void {
+  if (!tributeId || typeof window === "undefined") {
+    return;
+  }
+  const current = readTributeStyleOverrides();
+  current[tributeId] = {
+    sticky_note_color: stickyColor,
+    pen_style: penStyle
+  };
+  window.localStorage.setItem(TRIBUTE_STYLE_OVERRIDES_KEY, JSON.stringify(current));
+}
+
+function withStyleOverrides(tribute: Tribute): Tribute {
+  const normalizedColor = normalizeStickyNoteColor(tribute.sticky_note_color);
+  const normalizedPen = normalizePenStyle(tribute.pen_style);
+  const overrides = readTributeStyleOverrides()[tribute.id];
+  return {
+    ...tribute,
+    sticky_note_color: overrides?.sticky_note_color ?? normalizedColor,
+    pen_style: overrides?.pen_style ?? normalizedPen
+  };
+}
 
 function normalizePath(pathname: string): string {
   if (!pathname) {
@@ -93,7 +199,7 @@ function normalizePath(pathname: string): string {
 }
 
 function toDisplayType(type: TributeType): string {
-  return type === "birthday" ? "Birthday Message" : "Yearly Tribute Letter";
+  return type === "birthday" ? "Birthday Message" : "Letter";
 }
 
 function toExcerpt(content: string, max = 180): string {
@@ -101,6 +207,18 @@ function toExcerpt(content: string, max = 180): string {
     return content;
   }
   return `${content.slice(0, max).trim()}...`;
+}
+
+function toPostedDateLabel(dateString: string): string {
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return parsed.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
 }
 
 function isSupportedImageType(type: string): boolean {
@@ -119,8 +237,32 @@ async function fileToDataUrl(file: File): Promise<string> {
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const payload = (await response.json()) as { detail?: string };
-    return payload.detail ?? fallback;
+    const payload = (await response.json()) as {
+      detail?: string | Array<{ msg?: string }> | { msg?: string };
+      message?: string;
+    };
+    const detail = payload.detail;
+    if (typeof detail === "string" && detail.trim()) {
+      return detail;
+    }
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((entry) => (typeof entry?.msg === "string" ? entry.msg.trim() : ""))
+        .filter(Boolean);
+      if (messages.length > 0) {
+        return messages.join(", ");
+      }
+    }
+    if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+      const detailObj = detail as { msg?: string };
+      if (typeof detailObj.msg === "string" && detailObj.msg.trim()) {
+        return detailObj.msg;
+      }
+    }
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message;
+    }
+    return fallback;
   }
 
   const text = await response.text();
@@ -179,8 +321,6 @@ export function App() {
         </button>
         <nav className="top-nav" aria-label="Primary">
           <NavLink currentPath={path} href="/" label="Home" onNavigate={navigate} />
-          <NavLink currentPath={path} href="/about" label="Ken's Story" onNavigate={navigate} />
-          <NavLink currentPath={path} href="/tributes" label="Tribute Wall" onNavigate={navigate} />
           <NavLink currentPath={path} href="/submit" label="Leave Tribute" onNavigate={navigate} />
           <NavLink currentPath={path} href="/guidelines" label="Guidelines" onNavigate={navigate} />
           <NavLink currentPath={path} href="/admin/login" label="Admin" onNavigate={navigate} />
@@ -189,8 +329,6 @@ export function App() {
 
       <main>
         {path === "/" && <HomePage onNavigate={navigate} />}
-        {path === "/about" && <AboutPage />}
-        {path === "/tributes" && <TributesPage />}
         {path === "/submit" && <SubmitPage />}
         {path === "/guidelines" && <GuidelinesPage />}
         {path === "/admin/login" && (
@@ -205,8 +343,6 @@ export function App() {
         )}
         {![
           "/",
-          "/about",
-          "/tributes",
           "/submit",
           "/guidelines",
           "/admin/login",
@@ -217,7 +353,7 @@ export function App() {
       </main>
 
       <footer className="site-footer">
-        <p>Built with love to preserve Ken's memory with dignity and care.</p>
+        <p>Built with love</p>
       </footer>
     </div>
   );
@@ -251,53 +387,39 @@ function NavLink({
 
 function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
-    <section className="hero-panel reveal">
-      <p className="eyebrow">Digital Tribute Wall & Living Archive</p>
-      <h1>Ken Memorial</h1>
-      <p className="lede">
-        A calm and lasting place for friends and family to honor Ken through birthday messages,
-        yearly letters, and shared remembrance.
-      </p>
-      <div className="cta-row">
-        <button className="btn btn-primary" onClick={() => onNavigate("/tributes")} type="button">
-          Read Memories
-        </button>
-        <button className="btn btn-soft" onClick={() => onNavigate("/submit")} type="button">
-          Leave a Tribute
-        </button>
-      </div>
-    </section>
-  );
-}
+    <>
+      <section className="hero-panel reveal">
+        <div className="hero-main-row">
+          <div className="hero-copy">
+            <p className="eyebrow">Ken's Digital Album</p>
+            <h1>Ken Memorial</h1>
+            <p className="lede">
+              In honor of Ken 🕊️
+            </p>
+          </div>
+          <button
+            type="button"
+            className="hero-photo-float"
+            onClick={() => window.open("/ken-hero-photo.png", "_blank", "noopener,noreferrer")}
+            aria-label="Open Ken's photo"
+            title="Open photo"
+          >
+            <div className="hero-photo-frame">
+              <img src="/ken-hero-photo.png" alt="Ken smiling outdoors" className="hero-photo" />
+            </div>
+          </button>
+        </div>
+        <div className="cta-row">
+          <button className="btn hero-leave-btn" onClick={() => onNavigate("/submit")} type="button">
+            Leave a Tribute
+          </button>
+        </div>
+      </section>
 
-function AboutPage() {
-  return (
-    <section className="content-panel reveal">
-      <h2>Ken's Story</h2>
-      <p>
-        Ken's life is remembered through kindness, humor, and the way he brought people together.
-        This space preserves those memories with care.
-      </p>
-      <div className="about-grid">
-        <article>
-          <h3>Purpose</h3>
-          <p>This memorial is a long-term archive where meaningful tributes can be revisited.</p>
-        </article>
-        <article>
-          <h3>Moderation</h3>
-          <p>
-            Every tribute is reviewed before publication to maintain dignity and protect the
-            memorial tone.
-          </p>
-        </article>
-        <article>
-          <h3>Longevity</h3>
-          <p>
-            The architecture is built for gradual expansion into richer archive and search features.
-          </p>
-        </article>
+      <div id="home-tribute-wall" className="home-tribute-wall">
+        <TributesPage />
       </div>
-    </section>
+    </>
   );
 }
 
@@ -306,7 +428,7 @@ function GuidelinesPage() {
     <section className="content-panel reveal">
       <h2>Submission & Privacy Guidelines</h2>
       <ul className="guide-list">
-        <li>Write with respect for Ken, family, and community members.</li>
+        <li>Write with respect for Ken and community members.</li>
         <li>Submissions may be reviewed before appearing publicly.</li>
         <li>Anonymous submissions are displayed publicly as <strong>Anonymous</strong>.</li>
         <li>Avoid sharing private contact details or sensitive personal information.</li>
@@ -344,7 +466,7 @@ function TributesPage() {
         if (!response.ok) {
           throw new Error(await readErrorMessage(response, "Unable to load full tribute"));
         }
-        setSelectedTribute((await response.json()) as Tribute);
+        setSelectedTribute(withStyleOverrides((await response.json()) as Tribute));
       } catch (detailError) {
         setError(detailError instanceof Error ? detailError.message : "Unexpected error");
       } finally {
@@ -363,14 +485,8 @@ function TributesPage() {
       if (filters.type !== "all") {
         params.set("type", filters.type);
       }
-      if (filters.year) {
-        params.set("year", filters.year);
-      }
       if (filters.anonymous !== "all") {
         params.set("anonymous", filters.anonymous);
-      }
-      if (filters.featured) {
-        params.set("featured", "true");
       }
 
       const query = params.toString();
@@ -380,7 +496,8 @@ function TributesPage() {
         throw new Error(await readErrorMessage(response, "Failed to load tribute wall"));
       }
 
-      setTributes((await response.json()) as Tribute[]);
+      const loaded = (await response.json()) as Tribute[];
+      setTributes(loaded.map((tribute) => withStyleOverrides(tribute)));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Unexpected error");
     } finally {
@@ -388,21 +505,11 @@ function TributesPage() {
     }
   }
 
-  const years = useMemo(() => {
-    const values = new Set<number>();
-    for (const tribute of tributes) {
-      if (tribute.year_tag) {
-        values.add(tribute.year_tag);
-      }
-    }
-    return [...values].sort((a, b) => b - a);
-  }, [tributes]);
-
   return (
     <section className="content-panel reveal">
       <div className="section-head">
-        <h2>Tribute Wall</h2>
-        <p>Browse approved messages and letters shared in Ken's memory.</p>
+        <h2 className="tribute-wall-title">Tribute Wall</h2>
+        <p>Browse messages and letters shared in memory.</p>
       </div>
 
       <div className="filters">
@@ -416,22 +523,7 @@ function TributesPage() {
           >
             <option value="all">All Types</option>
             <option value="birthday">Birthday Messages</option>
-            <option value="yearly_letter">Yearly Tribute Letters</option>
-          </select>
-        </label>
-
-        <label>
-          Year
-          <select
-            value={filters.year}
-            onChange={(event) => setFilters((prev) => ({ ...prev, year: event.target.value }))}
-          >
-            <option value="">All Years</option>
-            {years.map((year) => (
-              <option key={year} value={String(year)}>
-                {year}
-              </option>
-            ))}
+            <option value="yearly_letter">Letters</option>
           </select>
         </label>
 
@@ -452,14 +544,6 @@ function TributesPage() {
           </select>
         </label>
 
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={filters.featured}
-            onChange={(event) => setFilters((prev) => ({ ...prev, featured: event.target.checked }))}
-          />
-          Featured only
-        </label>
       </div>
 
       {loading && <p>Loading tributes...</p>}
@@ -470,7 +554,13 @@ function TributesPage() {
 
       <div className="tribute-grid">
         {tributes.map((tribute) => (
-          <article className="tribute-card" key={tribute.id}>
+          <article
+            className={`tribute-card note-${normalizeStickyNoteColor(tribute.sticky_note_color)} pen-${tribute.pen_style} ${
+              tribute.type === "yearly_letter" && tribute.image_data_url ? "note-double-row" : ""
+            }`}
+            key={tribute.id}
+            style={toStickyNoteStyle(tribute.sticky_note_color)}
+          >
             <div className="chip-row">
               <span className="chip">{toDisplayType(tribute.type)}</span>
               {tribute.is_featured ? <span className="chip feature">Featured</span> : null}
@@ -487,13 +577,11 @@ function TributesPage() {
             ) : null}
             {tribute.title ? <h3>{tribute.title}</h3> : null}
             <p>{toExcerpt(tribute.content)}</p>
-            <p className="card-meta">
-              - {tribute.public_author_label}
-              {tribute.year_tag ? ` • ${tribute.year_tag}` : ""}
-            </p>
+            <p className="card-meta">- {tribute.public_author_label}</p>
             <button className="btn btn-soft" onClick={() => setSelectedId(tribute.id)} type="button">
               Read Full Tribute
             </button>
+            <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
           </article>
         ))}
       </div>
@@ -501,7 +589,7 @@ function TributesPage() {
       {selectedId && (
         <div className="modal-backdrop" role="presentation" onClick={() => setSelectedId(null)}>
           <div
-            className="modal-card"
+            className={`modal-card ${selectedTribute ? `pen-${selectedTribute.pen_style}` : ""}`}
             role="dialog"
             aria-modal="true"
             aria-label="Full tribute"
@@ -602,7 +690,7 @@ function SubmitPage() {
     }
 
     if (form.type === "yearly_letter" && !form.title.trim()) {
-      setError("A title is required for yearly tribute letters.");
+      setError("A title is required for letters.");
       return;
     }
 
@@ -617,15 +705,19 @@ function SubmitPage() {
           content: form.content,
           display_mode: form.display_mode,
           submitted_name: form.display_mode === "anonymous" ? null : form.submitted_name.trim(),
-          relationship_to_ken: form.relationship_to_ken.trim() || null,
-          year_tag: form.year_tag ? Number(form.year_tag) : null,
-          occasion_date: form.occasion_date || null,
-          image_data_url: form.image_data_url
+          image_data_url: form.image_data_url,
+          sticky_note_color: form.sticky_note_color,
+          pen_style: form.pen_style
         })
       });
 
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, "Submission failed"));
+      }
+
+      const created = (await response.json()) as Tribute;
+      if (created.id) {
+        writeTributeStyleOverride(created.id, form.sticky_note_color, form.pen_style);
       }
 
       setForm(INITIAL_FORM);
@@ -641,7 +733,7 @@ function SubmitPage() {
     <section className="content-panel reveal">
       <div className="section-head">
         <h2>Leave a Tribute</h2>
-        <p>Share a birthday message or yearly letter for Ken.</p>
+        <p>Share a birthday message or letter for Ken.</p>
       </div>
 
       <form className="tribute-form" onSubmit={handleSubmit}>
@@ -653,7 +745,7 @@ function SubmitPage() {
               onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as TributeType }))}
             >
               <option value="birthday">Birthday Message</option>
-              <option value="yearly_letter">Yearly Tribute Letter</option>
+              <option value="yearly_letter">Letter</option>
             </select>
           </label>
 
@@ -665,39 +757,6 @@ function SubmitPage() {
               maxLength={140}
               required={form.type === "yearly_letter"}
               placeholder={form.type === "yearly_letter" ? "A short title" : "Optional title"}
-            />
-          </label>
-
-          <label>
-            Your Relationship To Ken (Optional)
-            <input
-              value={form.relationship_to_ken}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, relationship_to_ken: event.target.value }))
-              }
-              maxLength={80}
-              placeholder="Friend, classmate, teammate, family..."
-            />
-          </label>
-
-          <label>
-            Year Tag (Optional)
-            <input
-              type="number"
-              value={form.year_tag}
-              onChange={(event) => setForm((prev) => ({ ...prev, year_tag: event.target.value }))}
-              min={2000}
-              max={2100}
-              placeholder="2026"
-            />
-          </label>
-
-          <label>
-            Occasion Date (Optional)
-            <input
-              type="date"
-              value={form.occasion_date}
-              onChange={(event) => setForm((prev) => ({ ...prev, occasion_date: event.target.value }))}
             />
           </label>
 
@@ -730,9 +789,56 @@ function SubmitPage() {
           )}
         </div>
 
+        <div className="style-picker-row">
+          <div className="style-picker-section">
+            <div className="style-picker-head">
+              <h3>Pick Your Sticky Note Color</h3>
+              <p>Choose the note color your tribute will appear on.</p>
+            </div>
+            <div className="note-color-grid" role="radiogroup" aria-label="Sticky note color">
+              {NOTE_COLORS.map((noteColor) => (
+                <button
+                  key={noteColor.value}
+                  type="button"
+                  className={`note-color-option ${noteColor.className} ${
+                    form.sticky_note_color === noteColor.value ? "selected" : ""
+                  }`}
+                  onClick={() => setForm((prev) => ({ ...prev, sticky_note_color: noteColor.value }))}
+                  aria-pressed={form.sticky_note_color === noteColor.value}
+                >
+                  <span>{noteColor.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="style-picker-section">
+            <div className="style-picker-head">
+              <h3>Choose Your Pen</h3>
+              <p>Select the writing style that will be used on your tribute card.</p>
+            </div>
+            <div className="pen-grid" role="radiogroup" aria-label="Pen style">
+              {PEN_STYLES.map((pen) => (
+                <button
+                  key={pen.value}
+                  type="button"
+                  className={`pen-option ${pen.className} ${form.pen_style === pen.value ? "selected" : ""}`}
+                  onClick={() => setForm((prev) => ({ ...prev, pen_style: pen.value }))}
+                  aria-pressed={form.pen_style === pen.value}
+                >
+                  <strong>{pen.label}</strong>
+                  <span>{pen.preview}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <label>
           Message
           <textarea
+            className={`tribute-message-input note-${form.sticky_note_color} pen-${form.pen_style}`}
+            style={toStickyNoteStyle(form.sticky_note_color)}
             value={form.content}
             onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
             minLength={10}

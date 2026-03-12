@@ -28,6 +28,21 @@ class TributeStatus(str, Enum):
     hidden = "hidden"
 
 
+class StickyNoteColor(str, Enum):
+    sunshine = "sunshine"
+    sky = "sky"
+    blossom = "blossom"
+    mint = "mint"
+    lavender = "lavender"
+
+
+class PenStyle(str, Enum):
+    classic = "classic"
+    marker = "marker"
+    fountain = "fountain"
+    gel = "gel"
+
+
 class SubmissionCreate(BaseModel):
     type: TributeType
     title: str | None = Field(default=None, max_length=140)
@@ -38,17 +53,19 @@ class SubmissionCreate(BaseModel):
     year_tag: int | None = Field(default=None, ge=2000, le=2100)
     occasion_date: date | None = None
     image_data_url: str | None = Field(default=None, max_length=4_500_000)
+    sticky_note_color: StickyNoteColor = StickyNoteColor.sunshine
+    pen_style: PenStyle = PenStyle.classic
 
     @model_validator(mode="after")
     def validate_submission(self) -> "SubmissionCreate":
         if self.type == TributeType.yearly_letter and not (self.title or "").strip():
-            raise ValueError("title is required for yearly tribute letters")
+            raise ValueError("title is required for letters")
 
         if self.type == TributeType.birthday and len(self.content.strip()) > 1500:
             raise ValueError("birthday messages must be 1500 characters or fewer")
 
         if self.type == TributeType.yearly_letter and len(self.content.strip()) < 50:
-            raise ValueError("yearly tribute letters must be at least 50 characters")
+            raise ValueError("letters must be at least 50 characters")
 
         if self.image_data_url:
             if not self.image_data_url.startswith("data:image/") or ";base64," not in self.image_data_url:
@@ -83,6 +100,8 @@ class Tribute(BaseModel):
     year_tag: int | None = None
     occasion_date: date | None = None
     image_data_url: str | None = None
+    sticky_note_color: StickyNoteColor
+    pen_style: PenStyle
     public_display_name: str
     status: TributeStatus
     visibility: Visibility
