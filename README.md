@@ -51,21 +51,6 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
 docker compose up -d postgres
 ```
 
-### Database Admin UI (Adminer)
-
-```bash
-docker compose up -d adminer
-```
-
-Open: `http://localhost:8080`
-
-Login values:
-- System: `PostgreSQL`
-- Server: `postgres`
-- Username: `postgres`
-- Password: `postgres`
-- Database: `ken_memorial`
-
 ### Full Local Stack
 
 ```bash
