@@ -125,6 +125,12 @@ npm run dev
 
 Open: `http://localhost:5173`
 
+For production frontend deployment (for example, Vercel), set:
+
+```dotenv
+VITE_API_BASE_URL=https://your-backend-domain
+```
+
 ### Backend
 
 ```bash

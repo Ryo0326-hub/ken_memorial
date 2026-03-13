@@ -3,6 +3,8 @@ import { Ban, Check, EyeOff, House, ImageMinus, LogOut, MousePointerClick, Send,
 
 import { ParticleButton } from "@/components/ui/particle-button";
 
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
 type TributeType = "birthday" | "yearly_letter";
 type DisplayMode = "named" | "anonymous";
 type TributeStatus = "pending" | "approved" | "rejected" | "hidden";
@@ -86,6 +88,7 @@ const INITIAL_FILTERS: TributeFilters = {
 const ADMIN_TOKEN_KEY = "ken_admin_token";
 const TRIBUTE_STYLE_OVERRIDES_KEY = "ken_tribute_style_overrides";
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 const NOTE_COLORS: Array<{ value: StickyNoteColor; label: string; className: string }> = [
   { value: "sky", label: "Sky", className: "note-sky" },
   { value: "mint", label: "Mint", className: "note-mint" },
@@ -199,6 +202,10 @@ function normalizePath(pathname: string): string {
     return "/";
   }
   return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
 }
 
 function toDisplayType(type: TributeType): string {
@@ -464,7 +471,7 @@ function TributesPage() {
     void (async () => {
       try {
         setLoadingDetail(true);
-        const response = await fetch(`/api/tributes/${selectedId}`, { signal: controller.signal });
+        const response = await fetch(apiUrl(`/api/tributes/${selectedId}`), { signal: controller.signal });
         if (!response.ok) {
           throw new Error(await readErrorMessage(response, "Unable to load full tribute"));
         }
@@ -492,8 +499,8 @@ function TributesPage() {
       }
 
       const query = params.toString();
-      const url = query ? `/api/tributes?${query}` : "/api/tributes";
-      const response = await fetch(url);
+      const path = query ? `/api/tributes?${query}` : "/api/tributes";
+      const response = await fetch(apiUrl(path));
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, "Failed to load tribute wall"));
       }
@@ -713,7 +720,7 @@ function SubmitPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/tributes", {
+      const response = await fetch(apiUrl("/api/tributes"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -947,7 +954,7 @@ function AdminLoginPage({
     setSubmitting(true);
 
     try {
-      const response = await fetch("/api/admin/login", {
+      const response = await fetch(apiUrl("/api/admin/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -1044,8 +1051,8 @@ function AdminDashboardPage({
     void loadAdminTributes();
   }, [token, statusFilter]);
 
-  async function adminFetch(input: string, init?: RequestInit): Promise<Response> {
-    const response = await fetch(input, {
+  async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
+    const response = await fetch(apiUrl(path), {
       ...init,
       headers: {
         "Content-Type": "application/json",
