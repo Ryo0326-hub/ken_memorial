@@ -14,9 +14,15 @@ def _allowed_origins() -> list[str]:
         return [origin.strip() for origin in raw.split(",") if origin.strip()]
     return ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+
+def _allowed_origin_regex() -> str | None:
+    raw = os.getenv("CORS_ALLOW_ORIGIN_REGEX", "").strip()
+    return raw or None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins(),
+    allow_origin_regex=_allowed_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
