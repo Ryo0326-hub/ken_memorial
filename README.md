@@ -45,16 +45,74 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
 
 ## Quick Start (Scaffold)
 
-### Infrastructure (Postgres)
+### Infrastructure (Postgres via Docker)
 
 ```bash
 docker compose up -d postgres
+```
+
+### Infrastructure (Neon)
+
+Use your Neon organization and project:
+
+- Org: `org-blue-boat-72105994`
+- Project: `holy-truth-29696808` (`ken-memorial`)
+
+1) Install and authenticate Neon CLI:
+
+```bash
+brew install neonctl
+neonctl auth
+```
+
+2) Get your Neon connection string:
+
+```bash
+neonctl connection-string --project-id holy-truth-29696808
+```
+
+3) Set up backend env file once:
+
+```bash
+cp backend/.env.example backend/.env
+# then paste your Neon connection string into backend/.env as DATABASE_URL
+```
+
+4) Run backend migrations and API against Neon:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
 ### Full Local Stack
 
 ```bash
 docker compose up --build -d
+```
+
+### Backend with Neon (One-time setup + one-command start)
+
+1) Create root env file for Docker Compose:
+
+```bash
+cp .env.example .env
+```
+
+2) Set your Neon connection string in `.env`:
+
+```dotenv
+DATABASE_URL=postgresql://<user>:<password>@<host>/<database>?sslmode=require&channel_binding=require
+```
+
+3) Start/restart backend (uses Neon automatically):
+
+```bash
+docker compose up -d --build backend
 ```
 
 ### Frontend

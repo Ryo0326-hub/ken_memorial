@@ -240,30 +240,34 @@ async function fileToDataUrl(file: File): Promise<string> {
 async function readErrorMessage(response: Response, fallback: string): Promise<string> {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const payload = (await response.json()) as {
-      detail?: string | Array<{ msg?: string }> | { msg?: string };
-      message?: string;
-    };
-    const detail = payload.detail;
-    if (typeof detail === "string" && detail.trim()) {
-      return detail;
-    }
-    if (Array.isArray(detail)) {
-      const messages = detail
-        .map((entry) => (typeof entry?.msg === "string" ? entry.msg.trim() : ""))
-        .filter(Boolean);
-      if (messages.length > 0) {
-        return messages.join(", ");
+    try {
+      const payload = (await response.json()) as {
+        detail?: string | Array<{ msg?: string }> | { msg?: string };
+        message?: string;
+      };
+      const detail = payload.detail;
+      if (typeof detail === "string" && detail.trim()) {
+        return detail;
       }
-    }
-    if (detail && typeof detail === "object" && !Array.isArray(detail)) {
-      const detailObj = detail as { msg?: string };
-      if (typeof detailObj.msg === "string" && detailObj.msg.trim()) {
-        return detailObj.msg;
+      if (Array.isArray(detail)) {
+        const messages = detail
+          .map((entry) => (typeof entry?.msg === "string" ? entry.msg.trim() : ""))
+          .filter(Boolean);
+        if (messages.length > 0) {
+          return messages.join(", ");
+        }
       }
-    }
-    if (typeof payload.message === "string" && payload.message.trim()) {
-      return payload.message;
+      if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+        const detailObj = detail as { msg?: string };
+        if (typeof detailObj.msg === "string" && detailObj.msg.trim()) {
+          return detailObj.msg;
+        }
+      }
+      if (typeof payload.message === "string" && payload.message.trim()) {
+        return payload.message;
+      }
+    } catch {
+      return fallback;
     }
     return fallback;
   }
