@@ -1,4 +1,7 @@
 import { CSSProperties, FormEvent, useEffect, useState } from "react";
+import { Ban, Check, EyeOff, House, ImageMinus, LogOut, MousePointerClick, Send, ShieldCheck, X } from "lucide-react";
+
+import { ParticleButton } from "@/components/ui/particle-button";
 
 type TributeType = "birthday" | "yearly_letter";
 type DisplayMode = "named" | "anonymous";
@@ -353,7 +356,7 @@ export function App() {
       </main>
 
       <footer className="site-footer">
-        <p>Built with love</p>
+        <p>Built by Ryo (Codex)</p>
       </footer>
     </div>
   );
@@ -397,22 +400,18 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
               In honor of Ken 🕊️
             </p>
           </div>
-          <button
-            type="button"
-            className="hero-photo-float"
-            onClick={() => window.open("/ken-hero-photo.png", "_blank", "noopener,noreferrer")}
-            aria-label="Open Ken's photo"
-            title="Open photo"
-          >
-            <div className="hero-photo-frame">
-              <img src="/ken-hero-photo.png" alt="Ken smiling outdoors" className="hero-photo" />
-            </div>
-          </button>
         </div>
         <div className="cta-row">
-          <button className="btn hero-leave-btn" onClick={() => onNavigate("/submit")} type="button">
+          <ParticleButton
+            className="hero-leave-btn"
+            onClick={() => onNavigate("/submit")}
+            type="button"
+            variant="default"
+            size="lg"
+            icon={<Send className="particle-button__svg" />}
+          >
             Leave a Tribute
-          </button>
+          </ParticleButton>
         </div>
       </section>
 
@@ -428,7 +427,6 @@ function GuidelinesPage() {
     <section className="content-panel reveal">
       <h2>Submission & Privacy Guidelines</h2>
       <ul className="guide-list">
-        <li>Write with respect for Ken and community members.</li>
         <li>Submissions may be reviewed before appearing publicly.</li>
         <li>Anonymous submissions are displayed publicly as <strong>Anonymous</strong>.</li>
         <li>Avoid sharing private contact details or sensitive personal information.</li>
@@ -553,37 +551,47 @@ function TributesPage() {
       )}
 
       <div className="tribute-grid">
-        {tributes.map((tribute) => (
-          <article
-            className={`tribute-card note-${normalizeStickyNoteColor(tribute.sticky_note_color)} pen-${tribute.pen_style} ${
-              tribute.type === "yearly_letter" && tribute.image_data_url ? "note-double-row" : ""
-            }`}
-            key={tribute.id}
-            style={toStickyNoteStyle(tribute.sticky_note_color)}
-          >
-            <div className="chip-row">
-              <span className="chip">{toDisplayType(tribute.type)}</span>
-              {tribute.is_featured ? <span className="chip feature">Featured</span> : null}
-            </div>
-            {tribute.image_data_url ? (
-              <button
+        {tributes.map((tribute) => {
+          const noteTone = normalizeStickyNoteColor(tribute.sticky_note_color);
+          return (
+            <article
+              className={`tribute-card note-${noteTone} pen-${tribute.pen_style} ${
+                tribute.type === "yearly_letter" && tribute.image_data_url ? "note-double-row" : ""
+              }`}
+              key={tribute.id}
+              style={toStickyNoteStyle(tribute.sticky_note_color)}
+            >
+              <div className="chip-row">
+                <span className="chip">{toDisplayType(tribute.type)}</span>
+                {tribute.is_featured ? <span className="chip feature">Featured</span> : null}
+              </div>
+              {tribute.image_data_url ? (
+                <button
+                  type="button"
+                  className="photo-frame card-photo-frame"
+                  onClick={() => setLightboxImage(tribute.image_data_url)}
+                  aria-label="Open tribute image"
+                >
+                  <img src={tribute.image_data_url} alt="Tribute memory" className="framed-photo" />
+                </button>
+              ) : null}
+              {tribute.title ? <h3>{tribute.title}</h3> : null}
+              <p>{toExcerpt(tribute.content)}</p>
+              <p className="card-meta">- {tribute.public_author_label}</p>
+              <ParticleButton
+                onClick={() => setSelectedId(tribute.id)}
                 type="button"
-                className="photo-frame card-photo-frame"
-                onClick={() => setLightboxImage(tribute.image_data_url)}
-                aria-label="Open tribute image"
+                variant="soft"
+                size="sm"
+                className={`read-tribute-btn read-tribute-btn--${noteTone}`}
+                icon={<MousePointerClick className="particle-button__svg" />}
               >
-                <img src={tribute.image_data_url} alt="Tribute memory" className="framed-photo" />
-              </button>
-            ) : null}
-            {tribute.title ? <h3>{tribute.title}</h3> : null}
-            <p>{toExcerpt(tribute.content)}</p>
-            <p className="card-meta">- {tribute.public_author_label}</p>
-            <button className="btn btn-soft" onClick={() => setSelectedId(tribute.id)} type="button">
-              Read Full Tribute
-            </button>
-            <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
-          </article>
-        ))}
+                Read Full Tribute
+              </ParticleButton>
+              <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
+            </article>
+          );
+        })}
       </div>
 
       {selectedId && (
@@ -623,9 +631,14 @@ function TributesPage() {
                   - {selectedTribute.public_author_label}
                   {selectedTribute.relationship_to_ken ? ` • ${selectedTribute.relationship_to_ken}` : ""}
                 </p>
-                <button className="btn btn-primary" onClick={() => setSelectedId(null)} type="button">
+                <ParticleButton
+                  onClick={() => setSelectedId(null)}
+                  type="button"
+                  variant="default"
+                  icon={<X className="particle-button__svg" />}
+                >
                   Close
-                </button>
+                </ParticleButton>
               </>
             )}
           </div>
@@ -873,13 +886,15 @@ function SubmitPage() {
             </button>
             <div className="upload-meta">
               <p>{form.image_name || "Selected image"}</p>
-              <button
+              <ParticleButton
                 type="button"
-                className="btn btn-soft"
+                variant="soft"
+                size="sm"
+                icon={<ImageMinus className="particle-button__svg" />}
                 onClick={() => setForm((prev) => ({ ...prev, image_data_url: null, image_name: "" }))}
               >
                 Remove Image
-              </button>
+              </ParticleButton>
             </div>
           </div>
         ) : null}
@@ -892,9 +907,16 @@ function SubmitPage() {
           </p>
         </div>
 
-        <button className="btn btn-primary" type="submit" disabled={submitting}>
+        <ParticleButton
+          type="submit"
+          disabled={submitting}
+          variant="default"
+          size="lg"
+          className="submit-action-btn"
+          icon={<Send className="particle-button__svg" />}
+        >
           {submitting ? "Submitting..." : "Submit Tribute"}
-        </button>
+        </ParticleButton>
 
         {error && <p className="status error">{error}</p>}
         {success && <p className="status success">{success}</p>}
@@ -944,7 +966,7 @@ function AdminLoginPage({
     <section className="content-panel reveal">
       <div className="section-head">
         <h2>Admin Login</h2>
-        <p>Sign in to moderate tributes and manage public visibility.</p>
+        <p>Restricted access (admins only)</p>
       </div>
 
       <form className="tribute-form" onSubmit={handleLogin}>
@@ -969,12 +991,22 @@ function AdminLoginPage({
         </label>
 
         <div className="cta-row">
-          <button className="btn btn-primary" type="submit" disabled={submitting}>
+          <ParticleButton
+            type="submit"
+            disabled={submitting}
+            variant="default"
+            icon={<ShieldCheck className="particle-button__svg" />}
+          >
             {submitting ? "Signing in..." : "Sign In"}
-          </button>
-          <button className="btn btn-soft" onClick={() => onNavigate("/")} type="button">
+          </ParticleButton>
+          <ParticleButton
+            onClick={() => onNavigate("/")}
+            type="button"
+            variant="soft"
+            icon={<House className="particle-button__svg" />}
+          >
             Cancel
-          </button>
+          </ParticleButton>
         </div>
 
         {error && <p className="status error">{error}</p>}
@@ -1118,9 +1150,14 @@ function AdminDashboardPage({
           <h2>Moderation Dashboard</h2>
           <p>Review pending tributes, moderate content, and control public visibility.</p>
         </div>
-        <button className="btn btn-soft" onClick={onLogout} type="button">
+        <ParticleButton
+          onClick={onLogout}
+          type="button"
+          variant="soft"
+          icon={<LogOut className="particle-button__svg" />}
+        >
           Logout
-        </button>
+        </ParticleButton>
       </div>
 
       <div className="filters">
@@ -1283,15 +1320,17 @@ function AdminDashboardPage({
                   </button>
                   <div className="upload-meta">
                     <p>Attached tribute image</p>
-                    <button
+                    <ParticleButton
                       type="button"
-                      className="btn btn-soft"
+                      variant="soft"
+                      size="sm"
+                      icon={<ImageMinus className="particle-button__svg" />}
                       onClick={() =>
                         setPatchForm((prev) => (prev ? { ...prev, image_data_url: null } : prev))
                       }
                     >
                       Remove Image
-                    </button>
+                    </ParticleButton>
                   </div>
                 </div>
               ) : null}
@@ -1309,30 +1348,38 @@ function AdminDashboardPage({
               </label>
 
               <div className="cta-row">
-                <button className="btn btn-primary" onClick={() => void savePatch()} disabled={saving}>
+                <ParticleButton
+                  onClick={() => void savePatch()}
+                  disabled={saving}
+                  variant="default"
+                  icon={<Send className="particle-button__svg" />}
+                >
                   {saving ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  className="btn btn-soft"
+                </ParticleButton>
+                <ParticleButton
                   type="button"
+                  variant="soft"
+                  icon={<Check className="particle-button__svg" />}
                   onClick={() => void runQuickAction(selectedTribute.id, "approve")}
                 >
                   Approve
-                </button>
-                <button
-                  className="btn btn-soft"
+                </ParticleButton>
+                <ParticleButton
                   type="button"
+                  variant="soft"
+                  icon={<Ban className="particle-button__svg" />}
                   onClick={() => void runQuickAction(selectedTribute.id, "reject")}
                 >
                   Reject
-                </button>
-                <button
-                  className="btn btn-soft"
+                </ParticleButton>
+                <ParticleButton
                   type="button"
+                  variant="soft"
+                  icon={<EyeOff className="particle-button__svg" />}
                   onClick={() => void runQuickAction(selectedTribute.id, "hide")}
                 >
                   Hide
-                </button>
+                </ParticleButton>
               </div>
             </div>
           )}
@@ -1362,9 +1409,14 @@ function NotFound({ onNavigate }: { onNavigate: (path: string) => void }) {
     <section className="content-panel reveal">
       <h2>Page Not Found</h2>
       <p>The page you requested does not exist.</p>
-      <button className="btn btn-primary" onClick={() => onNavigate("/")} type="button">
+      <ParticleButton
+        onClick={() => onNavigate("/")}
+        type="button"
+        variant="default"
+        icon={<House className="particle-button__svg" />}
+      >
         Return Home
-      </button>
+      </ParticleButton>
     </section>
   );
 }

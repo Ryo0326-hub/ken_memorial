@@ -1,6 +1,6 @@
 """add sticky note color and pen style
 
-Revision ID: 0003_add_sticky_note_color_and_pen_style
+Revision ID: 0003_sticky_pen_style
 Revises: 0002_add_extended_tribute_fields
 Create Date: 2026-03-12 01:05:00.000000
 
@@ -12,7 +12,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0003_add_sticky_note_color_and_pen_style"
+revision: str = "0003_sticky_pen_style"
 down_revision: str | None = "0002_add_extended_tribute_fields"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
