@@ -3,8 +3,6 @@ import { Ban, Check, EyeOff, House, ImageMinus, LogOut, MousePointerClick, Send,
 
 import { ParticleButton } from "@/components/ui/particle-button";
 
-import { SpeedInsights } from "@vercel/speed-insights/next"
-
 type TributeType = "birthday" | "yearly_letter";
 type DisplayMode = "named" | "anonymous";
 type TributeStatus = "pending" | "approved" | "rejected" | "hidden";
