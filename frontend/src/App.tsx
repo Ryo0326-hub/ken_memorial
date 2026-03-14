@@ -406,7 +406,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
             <p className="eyebrow">Ken's Digital Album</p>
             <h1>Ken Memorial</h1>
             <p className="lede">
-              For Ken 🕊️
+              Dedicated to Ken 🕊️
             </p>
           </div>
         </div>
