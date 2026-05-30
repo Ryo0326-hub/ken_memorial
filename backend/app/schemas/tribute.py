@@ -111,6 +111,7 @@ class Tribute(BaseModel):
     created_at: datetime
     updated_at: datetime
     approved_at: datetime | None = None
+    has_image: bool = False
 
     @computed_field
     @property

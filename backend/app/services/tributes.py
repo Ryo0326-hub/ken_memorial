@@ -1,4 +1,7 @@
+import base64
+import binascii
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
@@ -53,28 +56,64 @@ def list_public_tributes(
     featured_only: bool = False,
     page: int = 1,
     page_size: int = 20,
-) -> list[TributeModel]:
+    include_images: bool = True,
+) -> list[TributeModel | dict[str, Any]]:
     page = max(1, page)
     page_size = min(max(1, page_size), 100)
 
-    query: Select[tuple[TributeModel]] = select(TributeModel).where(
+    filters = [
         TributeModel.status == TributeStatus.approved,
         TributeModel.visibility == Visibility.public,
-    )
+    ]
 
     if tribute_type:
-        query = query.where(TributeModel.type == tribute_type)
+        filters.append(TributeModel.type == tribute_type)
     if year_tag:
-        query = query.where(TributeModel.year_tag == year_tag)
+        filters.append(TributeModel.year_tag == year_tag)
     if anonymous is not None:
         mode = DisplayMode.anonymous if anonymous else DisplayMode.named
-        query = query.where(TributeModel.display_mode == mode)
+        filters.append(TributeModel.display_mode == mode)
     if featured_only:
-        query = query.where(TributeModel.is_featured.is_(True))
+        filters.append(TributeModel.is_featured.is_(True))
 
+    if include_images:
+        query: Select[tuple[TributeModel]] = select(TributeModel).where(*filters)
+        query = query.order_by(TributeModel.is_featured.desc(), TributeModel.created_at.desc())
+        query = query.offset((page - 1) * page_size).limit(page_size)
+        return list(db.scalars(query).all())
+
+    query = select(
+        TributeModel.id,
+        TributeModel.type,
+        TributeModel.title,
+        TributeModel.content,
+        TributeModel.display_mode,
+        TributeModel.submitted_name,
+        TributeModel.relationship_to_ken,
+        TributeModel.year_tag,
+        TributeModel.occasion_date,
+        TributeModel.sticky_note_color,
+        TributeModel.pen_style,
+        TributeModel.public_display_name,
+        TributeModel.status,
+        TributeModel.visibility,
+        TributeModel.moderation_notes,
+        TributeModel.submitted_at,
+        TributeModel.is_featured,
+        TributeModel.created_at,
+        TributeModel.updated_at,
+        TributeModel.approved_at,
+        TributeModel.image_data_url.is_not(None).label("has_image"),
+    ).where(*filters)
     query = query.order_by(TributeModel.is_featured.desc(), TributeModel.created_at.desc())
     query = query.offset((page - 1) * page_size).limit(page_size)
-    return list(db.scalars(query).all())
+    rows = db.execute(query).mappings().all()
+    tributes: list[dict[str, Any]] = []
+    for row in rows:
+        tribute = dict(row)
+        tribute["image_data_url"] = None
+        tributes.append(tribute)
+    return tributes
 
 
 def list_tributes_by_status(
@@ -107,6 +146,33 @@ def get_public_by_id(db: Session, tribute_id: str) -> TributeModel | None:
         TributeModel.visibility == Visibility.public,
     )
     return db.scalars(query).first()
+
+
+def get_public_image_data(db: Session, tribute_id: str) -> tuple[str, bytes] | None:
+    query = select(TributeModel.image_data_url).where(
+        TributeModel.id == tribute_id,
+        TributeModel.status == TributeStatus.approved,
+        TributeModel.visibility == Visibility.public,
+    )
+    image_data_url = db.scalars(query).first()
+    if not image_data_url:
+        return None
+    return decode_image_data_url(image_data_url)
+
+
+def decode_image_data_url(image_data_url: str) -> tuple[str, bytes] | None:
+    if not image_data_url.startswith("data:image/") or ";base64," not in image_data_url:
+        return None
+
+    header, encoded = image_data_url.split(",", 1)
+    media_type = header[5:].split(";")[0]
+    if media_type not in {"image/jpeg", "image/png", "image/webp"}:
+        return None
+
+    try:
+        return media_type, base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError):
+        return None
 
 
 def set_status(db: Session, tribute: TributeModel, status: TributeStatus) -> TributeModel:

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.tribute import Tribute, TributeType
-from app.services.tributes import get_public_by_id, list_public_tributes
+from app.services.tributes import get_public_by_id, get_public_image_data, list_public_tributes
 
 router = APIRouter(tags=["public"])
 
@@ -16,9 +16,24 @@ def get_tributes(
     anonymous: bool | None = None,
     page: int = 1,
     page_size: int = 20,
+    include_images: bool = True,
     db: Session = Depends(get_db),
 ) -> list[Tribute]:
-    return list_public_tributes(db, type, year, anonymous, featured, page, page_size)
+    return list_public_tributes(db, type, year, anonymous, featured, page, page_size, include_images)
+
+
+@router.get("/tributes/{tribute_id}/image", response_class=Response)
+def get_tribute_image(tribute_id: str, db: Session = Depends(get_db)) -> Response:
+    image = get_public_image_data(db, tribute_id)
+    if not image:
+        raise HTTPException(status_code=404, detail="Tribute image not found")
+
+    media_type, content = image
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @router.get("/tributes/{tribute_id}", response_model=Tribute)

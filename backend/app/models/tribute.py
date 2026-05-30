@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -17,6 +17,9 @@ from app.schemas.tribute import (
 
 class TributeModel(Base):
     __tablename__ = "tributes"
+    __table_args__ = (
+        Index("ix_tributes_public_wall", "status", "visibility", "is_featured", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     type: Mapped[TributeType] = mapped_column(
@@ -67,3 +70,7 @@ class TributeModel(Base):
         DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def has_image(self) -> bool:
+        return bool(self.image_data_url)

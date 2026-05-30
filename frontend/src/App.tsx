@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, useEffect, useState } from "react";
-import { Ban, Check, EyeOff, House, ImageMinus, LogOut, MousePointerClick, Send, ShieldCheck, X } from "lucide-react";
+import { Ban, Check, EyeOff, House, ImageMinus, LogOut, Send, ShieldCheck } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
 
@@ -32,6 +32,7 @@ type Tribute = {
   created_at: string;
   updated_at: string;
   approved_at: string | null;
+  has_image?: boolean;
   is_anonymous: boolean;
   public_author_label: string;
 };
@@ -97,6 +98,7 @@ const PEN_STYLES: Array<{ value: PenStyle; label: string; className: string; pre
   { value: "marker", label: "Marker", className: "pen-marker", preview: "Bold strokes" },
   { value: "fountain", label: "Fountain Pen", className: "pen-fountain", preview: "Elegant flow" }
 ];
+type TributeStyleOverrides = Record<string, { sticky_note_color: StickyNoteColor; pen_style: PenStyle }>;
 
 function normalizeStickyNoteColor(value: string | null | undefined): StickyNoteColor {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -149,7 +151,7 @@ function normalizePenStyle(value: string | null | undefined): PenStyle {
   return "classic";
 }
 
-function readTributeStyleOverrides(): Record<string, { sticky_note_color: StickyNoteColor; pen_style: PenStyle }> {
+function readTributeStyleOverrides(): TributeStyleOverrides {
   if (typeof window === "undefined") {
     return {};
   }
@@ -159,7 +161,7 @@ function readTributeStyleOverrides(): Record<string, { sticky_note_color: Sticky
       return {};
     }
     const parsed = JSON.parse(raw) as Record<string, { sticky_note_color?: string; pen_style?: string }>;
-    const normalized: Record<string, { sticky_note_color: StickyNoteColor; pen_style: PenStyle }> = {};
+    const normalized: TributeStyleOverrides = {};
     for (const [id, style] of Object.entries(parsed)) {
       normalized[id] = {
         sticky_note_color: normalizeStickyNoteColor(style?.sticky_note_color),
@@ -184,14 +186,17 @@ function writeTributeStyleOverride(tributeId: string, stickyColor: StickyNoteCol
   window.localStorage.setItem(TRIBUTE_STYLE_OVERRIDES_KEY, JSON.stringify(current));
 }
 
-function withStyleOverrides(tribute: Tribute): Tribute {
+function withStyleOverrides(
+  tribute: Tribute,
+  overrides: TributeStyleOverrides = readTributeStyleOverrides()
+): Tribute {
   const normalizedColor = normalizeStickyNoteColor(tribute.sticky_note_color);
   const normalizedPen = normalizePenStyle(tribute.pen_style);
-  const overrides = readTributeStyleOverrides()[tribute.id];
+  const tributeOverrides = overrides[tribute.id];
   return {
     ...tribute,
-    sticky_note_color: overrides?.sticky_note_color ?? normalizedColor,
-    pen_style: overrides?.pen_style ?? normalizedPen
+    sticky_note_color: tributeOverrides?.sticky_note_color ?? normalizedColor,
+    pen_style: tributeOverrides?.pen_style ?? normalizedPen
   };
 }
 
@@ -204,6 +209,13 @@ function normalizePath(pathname: string): string {
 
 function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
+}
+
+function getTributeImageUrl(tribute: Tribute): string | null {
+  if (tribute.image_data_url) {
+    return tribute.image_data_url;
+  }
+  return tribute.has_image ? apiUrl(`/api/tributes/${tribute.id}/image`) : null;
 }
 
 function toDisplayType(type: TributeType): string {
@@ -328,9 +340,6 @@ export function App() {
   return (
     <div className="site-shell">
       <header className="site-header">
-        <button className="wordmark" onClick={() => navigate("/")} type="button">
-          Ken Memorial
-        </button>
         <nav className="top-nav" aria-label="Primary">
           <NavLink currentPath={path} href="/" label="Home" onNavigate={navigate} />
           <NavLink currentPath={path} href="/submit" label="Leave Tribute" onNavigate={navigate} />
@@ -404,23 +413,21 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
         <div className="hero-main-row">
           <div className="hero-copy">
             <p className="eyebrow">Ken's Digital Album</p>
-            <h1>Ken Memorial</h1>
+            <div className="hero-title-row">
+              <h1>Ken Memorial</h1>
+              <button
+                className="hero-leave-icon-btn"
+                onClick={() => onNavigate("/submit")}
+                type="button"
+                aria-label="Leave a Tribute"
+              >
+                <img src="/send-tribute-icon.png" alt="" aria-hidden="true" />
+              </button>
+            </div>
             <p className="lede">
               Dedicated to Ken 🕊️
             </p>
           </div>
-        </div>
-        <div className="cta-row">
-          <ParticleButton
-            className="hero-leave-btn"
-            onClick={() => onNavigate("/submit")}
-            type="button"
-            variant="default"
-            size="lg"
-            icon={<Send className="particle-button__svg" />}
-          >
-            Leave a Tribute
-          </ParticleButton>
         </div>
       </section>
 
@@ -450,39 +457,11 @@ function TributesPage() {
   const [tributes, setTributes] = useState<Tribute[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedTribute, setSelectedTribute] = useState<Tribute | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   useEffect(() => {
     void loadTributes();
   }, [filters]);
-
-  useEffect(() => {
-    if (!selectedId) {
-      setSelectedTribute(null);
-      return;
-    }
-
-    const controller = new AbortController();
-    void (async () => {
-      try {
-        setLoadingDetail(true);
-        const response = await fetch(apiUrl(`/api/tributes/${selectedId}`), { signal: controller.signal });
-        if (!response.ok) {
-          throw new Error(await readErrorMessage(response, "Unable to load full tribute"));
-        }
-        setSelectedTribute(withStyleOverrides((await response.json()) as Tribute));
-      } catch (detailError) {
-        setError(detailError instanceof Error ? detailError.message : "Unexpected error");
-      } finally {
-        setLoadingDetail(false);
-      }
-    })();
-
-    return () => controller.abort();
-  }, [selectedId]);
 
   async function loadTributes(): Promise<void> {
     try {
@@ -495,6 +474,7 @@ function TributesPage() {
       if (filters.anonymous !== "all") {
         params.set("anonymous", filters.anonymous);
       }
+      params.set("include_images", "false");
 
       const query = params.toString();
       const path = query ? `/api/tributes?${query}` : "/api/tributes";
@@ -504,7 +484,8 @@ function TributesPage() {
       }
 
       const loaded = (await response.json()) as Tribute[];
-      setTributes(loaded.map((tribute) => withStyleOverrides(tribute)));
+      const styleOverrides = readTributeStyleOverrides();
+      setTributes(loaded.map((tribute) => withStyleOverrides(tribute, styleOverrides)));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Unexpected error");
     } finally {
@@ -516,7 +497,6 @@ function TributesPage() {
     <section className="content-panel reveal">
       <div className="section-head">
         <h2 className="tribute-wall-title">Tribute Wall</h2>
-        <p>Browse messages and letters shared in memory.</p>
       </div>
 
       <div className="filters">
@@ -562,97 +542,44 @@ function TributesPage() {
       <div className="tribute-grid">
         {tributes.map((tribute) => {
           const noteTone = normalizeStickyNoteColor(tribute.sticky_note_color);
+          const imageUrl = getTributeImageUrl(tribute);
           return (
             <article
               className={`tribute-card note-${noteTone} pen-${tribute.pen_style} ${
-                tribute.type === "yearly_letter" && tribute.image_data_url ? "note-double-row" : ""
+                tribute.type === "yearly_letter" && imageUrl ? "note-double-row" : ""
               }`}
               key={tribute.id}
               style={toStickyNoteStyle(tribute.sticky_note_color)}
             >
-              <div className="chip-row">
-                <span className="chip">{toDisplayType(tribute.type)}</span>
-                {tribute.is_featured ? <span className="chip feature">Featured</span> : null}
-              </div>
-              {tribute.image_data_url ? (
+              {tribute.is_featured ? (
+                <div className="chip-row">
+                  <span className="chip feature">Featured</span>
+                </div>
+              ) : null}
+              {imageUrl ? (
                 <button
                   type="button"
                   className="photo-frame card-photo-frame"
-                  onClick={() => setLightboxImage(tribute.image_data_url)}
+                  onClick={() => setLightboxImage(imageUrl)}
                   aria-label="Open tribute image"
                 >
-                  <img src={tribute.image_data_url} alt="Tribute memory" className="framed-photo" />
+                  <img
+                    src={imageUrl}
+                    alt="Tribute memory"
+                    className="framed-photo"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </button>
               ) : null}
               {tribute.title ? <h3>{tribute.title}</h3> : null}
               <p>{toExcerpt(tribute.content)}</p>
               <p className="card-meta">- {tribute.public_author_label}</p>
-              <ParticleButton
-                onClick={() => setSelectedId(tribute.id)}
-                type="button"
-                variant="soft"
-                size="sm"
-                className={`read-tribute-btn read-tribute-btn--${noteTone}`}
-                icon={<MousePointerClick className="particle-button__svg" />}
-              >
-                Read Full Tribute
-              </ParticleButton>
               <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
             </article>
           );
         })}
       </div>
-
-      {selectedId && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setSelectedId(null)}>
-          <div
-            className={`modal-card ${selectedTribute ? `pen-${selectedTribute.pen_style}` : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Full tribute"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {loadingDetail || !selectedTribute ? (
-              <p>Loading...</p>
-            ) : (
-              <>
-                <div className="chip-row">
-                  <span className="chip">{toDisplayType(selectedTribute.type)}</span>
-                  {selectedTribute.is_featured ? <span className="chip feature">Featured</span> : null}
-                </div>
-                {selectedTribute.image_data_url ? (
-                  <button
-                    type="button"
-                    className="photo-frame modal-photo-frame"
-                    onClick={() => setLightboxImage(selectedTribute.image_data_url)}
-                    aria-label="Open tribute image"
-                  >
-                    <img
-                      src={selectedTribute.image_data_url}
-                      alt="Tribute memory"
-                      className="framed-photo"
-                    />
-                  </button>
-                ) : null}
-                {selectedTribute.title ? <h3>{selectedTribute.title}</h3> : null}
-                <p>{selectedTribute.content}</p>
-                <p className="card-meta">
-                  - {selectedTribute.public_author_label}
-                  {selectedTribute.relationship_to_ken ? ` • ${selectedTribute.relationship_to_ken}` : ""}
-                </p>
-                <ParticleButton
-                  onClick={() => setSelectedId(null)}
-                  type="button"
-                  variant="default"
-                  icon={<X className="particle-button__svg" />}
-                >
-                  Close
-                </ParticleButton>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {lightboxImage && (
         <div className="lightbox-backdrop" role="presentation" onClick={() => setLightboxImage(null)}>

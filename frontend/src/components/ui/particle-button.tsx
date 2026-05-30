@@ -13,20 +13,7 @@ interface ParticleButtonProps extends ButtonProps {
   icon?: React.ReactNode;
 }
 
-function resolveParticleToneClass(
-  variant: ButtonProps["variant"] | undefined,
-  className: string | undefined
-): string {
-  const classes = className ?? "";
-  if (classes.includes("read-tribute-btn--sky")) {
-    return "particle-tone--sky";
-  }
-  if (classes.includes("read-tribute-btn--mint")) {
-    return "particle-tone--mint";
-  }
-  if (classes.includes("read-tribute-btn--lavender")) {
-    return "particle-tone--lavender";
-  }
+function resolveParticleToneClass(variant: ButtonProps["variant"] | undefined): string {
   if (variant === "soft" || variant === "ghost" || variant === "outline" || variant === "link") {
     return "particle-tone--soft";
   }
@@ -93,7 +80,7 @@ function ParticleButton({
 }: ParticleButtonProps) {
   const [showParticles, setShowParticles] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const particleToneClass = resolveParticleToneClass(props.variant, className);
+  const particleToneClass = resolveParticleToneClass(props.variant);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (disabled) {
