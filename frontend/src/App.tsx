@@ -1,7 +1,8 @@
-import { CSSProperties, FormEvent, useEffect, useState } from "react";
+import { CSSProperties, DragEvent, FormEvent, useEffect, useState } from "react";
 import { Ban, Check, EyeOff, House, ImageMinus, LogOut, Send, ShieldCheck } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
+import uploadIconSrc from "@/assets/upload-icon.png";
 
 type TributeType = "birthday" | "yearly_letter";
 type DisplayMode = "named" | "anonymous";
@@ -93,6 +94,7 @@ const NOTE_COLORS: Array<{ value: StickyNoteColor; label: string; className: str
   { value: "mint", label: "Mint", className: "note-mint" },
   { value: "lavender", label: "Lavender", className: "note-lavender" }
 ];
+const LOADING_TRIBUTE_PLACEHOLDERS: StickyNoteColor[] = ["mint", "sky", "lavender", "mint", "sky", "lavender"];
 const PEN_STYLES: Array<{ value: PenStyle; label: string; className: string; preview: string }> = [
   { value: "classic", label: "Classic Pen", className: "pen-classic", preview: "Steady handwriting" },
   { value: "marker", label: "Marker", className: "pen-marker", preview: "Bold strokes" },
@@ -222,6 +224,12 @@ function toDisplayType(type: TributeType): string {
   return type === "birthday" ? "Birthday Message" : "Letter";
 }
 
+function getMessagePlaceholder(type: TributeType): string {
+  return type === "birthday"
+    ? "Happy birthday, Ken. I'm remembering the way you..."
+    : "Dear Ken, I wanted to write to you about...";
+}
+
 function toExcerpt(content: string, max = 180): string {
   if (content.length <= max) {
     return content;
@@ -341,10 +349,28 @@ export function App() {
     <div className="site-shell">
       <header className="site-header">
         <nav className="top-nav" aria-label="Primary">
-          <NavLink currentPath={path} href="/" label="Home" onNavigate={navigate} />
-          <NavLink currentPath={path} href="/submit" label="Leave Tribute" onNavigate={navigate} />
-          <NavLink currentPath={path} href="/guidelines" label="Guidelines" onNavigate={navigate} />
-          <NavLink currentPath={path} href="/admin/login" label="Admin" onNavigate={navigate} />
+          <NavLink currentPath={path} href="/" iconSrc="/nav-icons/home.png" label="Home" onNavigate={navigate} />
+          <NavLink
+            currentPath={path}
+            href="/submit"
+            iconSrc="/nav-icons/send-message.png"
+            label="Send Message"
+            onNavigate={navigate}
+          />
+          <NavLink
+            currentPath={path}
+            href="/guidelines"
+            iconSrc="/nav-icons/guidelines.png"
+            label="Guidelines"
+            onNavigate={navigate}
+          />
+          <NavLink
+            currentPath={path}
+            href="/admin/login"
+            iconSrc="/nav-icons/admin.png"
+            label="Admin"
+            onNavigate={navigate}
+          />
         </nav>
       </header>
 
@@ -383,11 +409,13 @@ export function App() {
 function NavLink({
   currentPath,
   href,
+  iconSrc,
   label,
   onNavigate
 }: {
   currentPath: string;
   href: string;
+  iconSrc: string;
   label: string;
   onNavigate: (path: string) => void;
 }) {
@@ -396,12 +424,15 @@ function NavLink({
     <a
       href={href}
       className={active ? "nav-link active" : "nav-link"}
+      aria-label={label}
+      title={label}
       onClick={(event) => {
         event.preventDefault();
         onNavigate(href);
       }}
     >
-      {label}
+      <img src={iconSrc} alt="" className="nav-link-icon" aria-hidden="true" />
+      <span className="sr-only">{label}</span>
     </a>
   );
 }
@@ -425,7 +456,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
               </button>
             </div>
             <p className="lede">
-              Dedicated to Ken 🕊️
+              Dedicated to my brother 🕊️
             </p>
           </div>
         </div>
@@ -530,55 +561,81 @@ function TributesPage() {
             <option value="true">Anonymous</option>
           </select>
         </label>
-
       </div>
 
-      {loading && <p>Loading tributes...</p>}
+      {loading && (
+        <div className="tribute-loading" role="status" aria-live="polite">
+          <span>Loading tributes</span>
+          <span className="loading-dots" aria-hidden="true">
+            <span>.</span>
+            <span>.</span>
+            <span>.</span>
+          </span>
+        </div>
+      )}
       {error && <p className="status error">{error}</p>}
       {!loading && tributes.length === 0 && (
         <p className="empty">No approved tributes match this filter yet.</p>
       )}
 
       <div className="tribute-grid">
-        {tributes.map((tribute) => {
-          const noteTone = normalizeStickyNoteColor(tribute.sticky_note_color);
-          const imageUrl = getTributeImageUrl(tribute);
-          return (
+        {loading ? (
+          LOADING_TRIBUTE_PLACEHOLDERS.map((noteTone, index) => (
             <article
-              className={`tribute-card note-${noteTone} pen-${tribute.pen_style} ${
-                tribute.type === "yearly_letter" && imageUrl ? "note-double-row" : ""
-              }`}
-              key={tribute.id}
-              style={toStickyNoteStyle(tribute.sticky_note_color)}
+              aria-hidden="true"
+              className={`tribute-card loading-tribute-card note-${noteTone} pen-classic`}
+              key={`loading-tribute-${noteTone}-${index}`}
+              style={toStickyNoteStyle(noteTone)}
             >
-              {tribute.is_featured ? (
-                <div className="chip-row">
-                  <span className="chip feature">Featured</span>
-                </div>
-              ) : null}
-              {imageUrl ? (
-                <button
-                  type="button"
-                  className="photo-frame card-photo-frame"
-                  onClick={() => setLightboxImage(imageUrl)}
-                  aria-label="Open tribute image"
-                >
-                  <img
-                    src={imageUrl}
-                    alt="Tribute memory"
-                    className="framed-photo"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </button>
-              ) : null}
-              {tribute.title ? <h3>{tribute.title}</h3> : null}
-              <p>{toExcerpt(tribute.content)}</p>
-              <p className="card-meta">- {tribute.public_author_label}</p>
-              <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
+              <div className="loading-note-lines">
+                <span className="loading-note-line loading-note-line--title" />
+                <span className="loading-note-line" />
+                <span className="loading-note-line loading-note-line--short" />
+                <span className="loading-note-line loading-note-line--meta" />
+              </div>
             </article>
-          );
-        })}
+          ))
+        ) : (
+          tributes.map((tribute) => {
+            const noteTone = normalizeStickyNoteColor(tribute.sticky_note_color);
+            const imageUrl = getTributeImageUrl(tribute);
+            return (
+              <article
+                className={`tribute-card note-${noteTone} pen-${tribute.pen_style} ${
+                  tribute.type === "yearly_letter" && imageUrl ? "note-double-row" : ""
+                }`}
+                key={tribute.id}
+                style={toStickyNoteStyle(tribute.sticky_note_color)}
+              >
+                {tribute.is_featured ? (
+                  <div className="chip-row">
+                    <span className="chip feature">Featured</span>
+                  </div>
+                ) : null}
+                {imageUrl ? (
+                  <button
+                    type="button"
+                    className="photo-frame card-photo-frame"
+                    onClick={() => setLightboxImage(imageUrl)}
+                    aria-label="Open tribute image"
+                  >
+                    <img
+                      src={imageUrl}
+                      alt="Tribute memory"
+                      className="framed-photo"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </button>
+                ) : null}
+                {tribute.title ? <h3>{tribute.title}</h3> : null}
+                <p>{toExcerpt(tribute.content)}</p>
+                <p className="card-meta">- {tribute.public_author_label}</p>
+                <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
+              </article>
+            );
+          })
+        )}
       </div>
 
       {lightboxImage && (
@@ -602,6 +659,7 @@ function SubmitPage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [photoDragActive, setPhotoDragActive] = useState<boolean>(false);
 
   async function handleImageSelection(file: File | null): Promise<void> {
     if (!file) {
@@ -628,6 +686,34 @@ function SubmitPage() {
     }
   }
 
+  function handlePhotoDragEnter(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    if (Array.from(event.dataTransfer.types).includes("Files")) {
+      setPhotoDragActive(true);
+    }
+  }
+
+  function handlePhotoDragOver(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    if (Array.from(event.dataTransfer.types).includes("Files")) {
+      setPhotoDragActive(true);
+    }
+  }
+
+  function handlePhotoDragLeave(event: DragEvent<HTMLDivElement>): void {
+    const nextTarget = event.relatedTarget;
+    if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+      setPhotoDragActive(false);
+    }
+  }
+
+  function handlePhotoDrop(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    setPhotoDragActive(false);
+    void handleImageSelection(event.dataTransfer.files?.[0] ?? null);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError("");
@@ -635,11 +721,6 @@ function SubmitPage() {
 
     if (form.display_mode === "named" && !form.submitted_name.trim()) {
       setError("Please enter your name or choose anonymous.");
-      return;
-    }
-
-    if (form.type === "yearly_letter" && !form.title.trim()) {
-      setError("A title is required for letters.");
       return;
     }
 
@@ -699,13 +780,12 @@ function SubmitPage() {
           </label>
 
           <label>
-            Title {form.type === "yearly_letter" ? "(Required)" : "(Optional)"}
+            Title (Optional)
             <input
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
               maxLength={140}
-              required={form.type === "yearly_letter"}
-              placeholder={form.type === "yearly_letter" ? "A short title" : "Optional title"}
+              placeholder="Optional title"
             />
           </label>
 
@@ -793,47 +873,79 @@ function SubmitPage() {
             minLength={10}
             maxLength={5000}
             required
-            placeholder="Write your remembrance for Ken..."
+            placeholder={getMessagePlaceholder(form.type)}
           />
         </label>
 
-        <label>
-          Optional Photo (Max 1 image, up to 3MB)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => void handleImageSelection(event.target.files?.[0] ?? null)}
-          />
-        </label>
-
-        {form.image_data_url ? (
-          <div className="photo-upload-preview">
-            <button
-              type="button"
-              className="photo-frame submit-photo-frame"
-              onClick={() => {
-                if (form.image_data_url) {
-                  window.open(form.image_data_url, "_blank", "noopener,noreferrer");
-                }
-              }}
-              aria-label="Open selected image preview"
-            >
-              <img src={form.image_data_url} alt="Selected tribute preview" className="framed-photo" />
-            </button>
-            <div className="upload-meta">
-              <p>{form.image_name || "Selected image"}</p>
-              <ParticleButton
-                type="button"
-                variant="soft"
-                size="sm"
-                icon={<ImageMinus className="particle-button__svg" />}
-                onClick={() => setForm((prev) => ({ ...prev, image_data_url: null, image_name: "" }))}
-              >
-                Remove Image
-              </ParticleButton>
-            </div>
+        <div className="photo-upload-field">
+          <div className="photo-upload-heading">
+            <span className="photo-upload-label">Optional Photo</span>
+            <span className="photo-upload-limit">Max 1 image · 3MB</span>
           </div>
-        ) : null}
+          <div
+            className={`photo-upload-box ${photoDragActive ? "is-dragging" : ""} ${
+              form.image_data_url ? "has-photo" : ""
+            }`}
+            onDragEnter={handlePhotoDragEnter}
+            onDragOver={handlePhotoDragOver}
+            onDragLeave={handlePhotoDragLeave}
+            onDrop={handlePhotoDrop}
+          >
+            <label className="photo-drop-zone">
+              <input
+                className="photo-file-input"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => {
+                  void handleImageSelection(event.target.files?.[0] ?? null);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <span className="upload-icon-shell" aria-hidden="true">
+                <img src={uploadIconSrc} alt="" className="upload-icon" />
+              </span>
+              <span className="photo-upload-copy">
+                <span className="photo-upload-title">
+                  {form.image_data_url ? "Replace photo" : "Add a photo"}
+                </span>
+                <span className="photo-upload-help">
+                  {form.image_data_url ? form.image_name || "Selected image" : "Drag and drop or tap to choose"}
+                </span>
+                <span className="photo-upload-meta">JPEG, PNG, WEBP</span>
+              </span>
+              <span className="photo-upload-action">Choose</span>
+            </label>
+
+            {form.image_data_url ? (
+              <div className="photo-upload-preview submit-upload-preview">
+                <button
+                  type="button"
+                  className="photo-frame submit-photo-frame"
+                  onClick={() => {
+                    if (form.image_data_url) {
+                      window.open(form.image_data_url, "_blank", "noopener,noreferrer");
+                    }
+                  }}
+                  aria-label="Open selected image preview"
+                >
+                  <img src={form.image_data_url} alt="Selected tribute preview" className="framed-photo" />
+                </button>
+                <div className="upload-meta">
+                  <p>{form.image_name || "Selected image"}</p>
+                  <ParticleButton
+                    type="button"
+                    variant="soft"
+                    size="sm"
+                    icon={<ImageMinus className="particle-button__svg" />}
+                    onClick={() => setForm((prev) => ({ ...prev, image_data_url: null, image_name: "" }))}
+                  >
+                    Remove Image
+                  </ParticleButton>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
 
         <div className="privacy-note">
           <h3>Privacy Notice</h3>
@@ -902,7 +1014,7 @@ function AdminLoginPage({
     <section className="content-panel reveal">
       <div className="section-head">
         <h2>Admin Login</h2>
-        <p>Restricted access (admins only)</p>
+        <p>Restricted access</p>
       </div>
 
       <form className="tribute-form" onSubmit={handleLogin}>

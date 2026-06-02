@@ -58,9 +58,6 @@ class SubmissionCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_submission(self) -> "SubmissionCreate":
-        if self.type == TributeType.yearly_letter and not (self.title or "").strip():
-            raise ValueError("title is required for letters")
-
         if self.type == TributeType.birthday and len(self.content.strip()) > 1500:
             raise ValueError("birthday messages must be 1500 characters or fewer")
 
