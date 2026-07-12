@@ -1,5 +1,5 @@
 import { CSSProperties, DragEvent, FormEvent, useEffect, useState } from "react";
-import { Ban, Check, EyeOff, House, ImageMinus, LogOut, Send, ShieldCheck } from "lucide-react";
+import { Ban, Check, EyeOff, House, ImageMinus, LogOut, Send } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
 import uploadIconSrc from "@/assets/upload-icon.png";
@@ -443,9 +443,8 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
       <section className="hero-panel reveal">
         <div className="hero-main-row">
           <div className="hero-copy">
-            <p className="eyebrow">Ken's Digital Album</p>
             <div className="hero-title-row">
-              <h1>Ken Memorial</h1>
+              <h1>Ken's digital album</h1>
               <button
                 className="hero-leave-icon-btn"
                 onClick={() => onNavigate("/submit")}
@@ -455,9 +454,6 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
                 <img src="/send-tribute-icon.png" alt="" aria-hidden="true" />
               </button>
             </div>
-            <p className="lede">
-              Dedicated to my brother 🕊️
-            </p>
           </div>
         </div>
       </section>
@@ -958,13 +954,12 @@ function SubmitPage() {
         <ParticleButton
           type="submit"
           disabled={submitting}
-          variant="default"
+          variant="soft"
           size="lg"
-          className="submit-action-btn"
-          icon={<Send className="particle-button__svg" />}
-        >
-          {submitting ? "Submitting..." : "Submit Tribute"}
-        </ParticleButton>
+          aria-label={submitting ? "Submitting tribute" : "Submit tribute"}
+          className={`action-button action-button--submit${submitting ? " action-button--submit-busy" : ""}`}
+          icon={<img src="/action-icons/submit.png" alt="Submit tribute" className="action-button__icon action-button__icon--submit" />}
+        />
 
         {error && <p className="status error">{error}</p>}
         {success && <p className="status success">{success}</p>}
@@ -1042,8 +1037,9 @@ function AdminLoginPage({
           <ParticleButton
             type="submit"
             disabled={submitting}
-            variant="default"
-            icon={<ShieldCheck className="particle-button__svg" />}
+            variant="soft"
+            className="action-button action-button--sign-in"
+            icon={<img src="/action-icons/sign-in.svg" alt="" className="action-button__icon" />}
           >
             {submitting ? "Signing in..." : "Sign In"}
           </ParticleButton>
@@ -1051,7 +1047,8 @@ function AdminLoginPage({
             onClick={() => onNavigate("/")}
             type="button"
             variant="soft"
-            icon={<House className="particle-button__svg" />}
+            className="action-button action-button--cancel"
+            icon={<img src="/action-icons/cancel.svg" alt="" className="action-button__icon" />}
           >
             Cancel
           </ParticleButton>

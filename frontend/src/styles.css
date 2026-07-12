@@ -408,6 +408,105 @@ h2 {
   border-radius: var(--control-radius);
 }
 
+.action-button {
+  gap: 0.6rem;
+  min-height: 48px;
+  border: 1px solid rgba(75, 100, 110, 0.22);
+  border-radius: 14px;
+  color: #173247;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 6px 16px rgba(38, 61, 73, 0.12);
+}
+
+.action-button:hover:not(:disabled) {
+  border-color: rgba(20, 115, 160, 0.42);
+  background: #fff;
+  box-shadow: 0 9px 20px rgba(38, 91, 119, 0.18);
+}
+
+/* Icon-only submit button: the icon carries the label, so drop the button
+   chrome and let it stand on its own with a pressable, tactile feel. */
+.action-button--submit {
+  min-width: 0;
+  min-height: 0;
+  gap: 0;
+  padding: 8px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  transition: transform 130ms cubic-bezier(0.3, 0.7, 0.4, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action-button--submit .particle-button__label,
+.action-button--submit .particle-button__sheen,
+.action-button--submit .particle-button__glow {
+  display: none;
+}
+
+.action-button--submit .particle-button__icon {
+  width: auto;
+  height: auto;
+  opacity: 1;
+}
+
+.action-button--submit:hover:not(:disabled) {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+
+.action-button--submit:active:not(:disabled) {
+  transform: translateY(3px) scale(0.95);
+  transition-duration: 60ms;
+}
+
+.action-button--submit-busy {
+  cursor: progress;
+}
+
+.action-button__icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.action-button__icon--submit {
+  width: auto;
+  height: 52px;
+  filter: drop-shadow(0 7px 11px rgba(38, 61, 73, 0.26));
+  transition: filter 130ms ease;
+}
+
+.action-button--submit:hover:not(:disabled) .action-button__icon--submit {
+  filter: drop-shadow(0 11px 16px rgba(38, 91, 119, 0.32));
+}
+
+.action-button--submit:active:not(:disabled) .action-button__icon--submit {
+  filter: drop-shadow(0 2px 3px rgba(38, 61, 73, 0.3));
+}
+
+.action-button--submit:disabled .action-button__icon--submit,
+.action-button--submit-busy .action-button__icon--submit {
+  opacity: 0.55;
+  filter: grayscale(0.35) drop-shadow(0 3px 6px rgba(38, 61, 73, 0.16));
+}
+
+.action-button--sign-in .action-button__icon {
+  width: 31px;
+  height: 31px;
+}
+
+.action-button--cancel .action-button__icon {
+  width: 27px;
+  height: 27px;
+}
+
 .particle-button-shell {
   position: relative;
   display: inline-flex;

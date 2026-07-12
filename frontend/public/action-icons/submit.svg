@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 42" role="img" aria-label="Submit">
+  <path fill="#07131c" d="M4 4h112v26h-8v8H4z"/>
+  <path fill="#00a9e8" d="M7 7h106v20h-8v8H7z"/>
+  <path fill="#fff" d="M10 10h99v14h-7v8H10z"/>
+  <text x="14" y="22" fill="#07131c" font-family="Arial Black, Impact, sans-serif" font-size="14" letter-spacing="-1">SUBMIT</text>
+  <path fill="#92dcff" stroke="#07131c" stroke-width="2" d="M88 22l14 5-6 3 2 7-4 1-3-7-5 2z"/>
+</svg>
