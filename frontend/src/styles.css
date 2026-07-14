@@ -427,6 +427,7 @@ h2 {
 /* Icon-only submit button: the icon carries the label, so drop the button
    chrome and let it stand on its own with a pressable, tactile feel. */
 .action-button--submit {
+  justify-self: center;
   min-width: 0;
   min-height: 0;
   gap: 0;

@@ -226,8 +226,8 @@ function toDisplayType(type: TributeType): string {
 
 function getMessagePlaceholder(type: TributeType): string {
   return type === "birthday"
-    ? "Happy birthday, Ken. I'm remembering the way you..."
-    : "Dear Ken, I wanted to write to you about...";
+    ? "Happy Birthday Ken..."
+    : "Dear Ken, ...";
 }
 
 function toExcerpt(content: string, max = 180): string {
