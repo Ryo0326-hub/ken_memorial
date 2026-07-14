@@ -951,15 +951,17 @@ function SubmitPage() {
           </p>
         </div>
 
-        <ParticleButton
-          type="submit"
-          disabled={submitting}
-          variant="soft"
-          size="lg"
-          aria-label={submitting ? "Submitting tribute" : "Submit tribute"}
-          className={`action-button action-button--submit${submitting ? " action-button--submit-busy" : ""}`}
-          icon={<img src="/action-icons/submit.png" alt="Submit tribute" className="action-button__icon action-button__icon--submit" />}
-        />
+        <div className="submit-action-wrap">
+          <ParticleButton
+            type="submit"
+            disabled={submitting}
+            variant="soft"
+            size="lg"
+            aria-label={submitting ? "Submitting tribute" : "Submit tribute"}
+            className={`action-button action-button--submit${submitting ? " action-button--submit-busy" : ""}`}
+            icon={<img src="/action-icons/submit.png" alt="Submit tribute" className="action-button__icon action-button__icon--submit" />}
+          />
+        </div>
 
         {error && <p className="status error">{error}</p>}
         {success && <p className="status success">{success}</p>}

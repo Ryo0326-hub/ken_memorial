@@ -427,7 +427,6 @@ h2 {
 /* Icon-only submit button: the icon carries the label, so drop the button
    chrome and let it stand on its own with a pressable, tactile feel. */
 .action-button--submit {
-  justify-self: center;
   min-width: 0;
   min-height: 0;
   gap: 0;
@@ -439,6 +438,12 @@ h2 {
   cursor: pointer;
   transition: transform 130ms cubic-bezier(0.3, 0.7, 0.4, 1);
   -webkit-tap-highlight-color: transparent;
+}
+
+.submit-action-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .action-button--submit .particle-button__label,
