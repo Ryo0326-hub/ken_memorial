@@ -215,7 +215,7 @@ h3 {
 .hero-title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: clamp(0.5rem, 2vw, 1rem);
   width: 100%;
   margin: 0.45rem 0 0.9rem;
