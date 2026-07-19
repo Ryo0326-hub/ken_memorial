@@ -1,14 +1,15 @@
-import os
 from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.config import settings
+
 JWT_ALGORITHM = "HS256"
-JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "change-this-admin-jwt-secret")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@kenmemorial.local")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "change-me")
+JWT_SECRET = settings.admin_jwt_secret
+ADMIN_EMAIL = settings.admin_email
+ADMIN_PASSWORD = settings.admin_password
 
 security_scheme = HTTPBearer(auto_error=False)
 

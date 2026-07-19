@@ -19,6 +19,9 @@ dist/
 !.env.example
 !*.env.example
 
+# Private persona source material and local imports
+/backend/private/
+
 # IDE
 .vscode/
 .idea/

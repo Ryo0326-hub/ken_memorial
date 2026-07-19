@@ -1,12 +1,13 @@
 import base64
 import binascii
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.models.tribute import TributeModel
+from app.config import settings
 from app.schemas.admin import AdminTributePatch
 from app.schemas.tribute import (
     DisplayMode,
@@ -14,6 +15,8 @@ from app.schemas.tribute import (
     TributeStatus,
     TributeType,
     Visibility,
+    AIConsentBasis,
+    AIUseStatus,
 )
 
 
@@ -40,6 +43,13 @@ def create_submission(db: Session, payload: SubmissionCreate) -> TributeModel:
         public_display_name=display_name,
         status=TributeStatus.pending,
         visibility=Visibility.public,
+        ai_consent=payload.ai_consent,
+        ai_consent_policy_version=(
+            settings.ai_consent_policy_version if payload.ai_consent else None
+        ),
+        ai_consent_at=datetime.now(timezone.utc) if payload.ai_consent else None,
+        ai_consent_basis=(AIConsentBasis.submitter_opt_in if payload.ai_consent else None),
+        ai_use_status=(AIUseStatus.pending_review if payload.ai_consent else AIUseStatus.excluded),
     )
 
     db.add(tribute)
@@ -177,12 +187,12 @@ def decode_image_data_url(image_data_url: str) -> tuple[str, bytes] | None:
 
 def set_status(db: Session, tribute: TributeModel, status: TributeStatus) -> TributeModel:
     tribute.status = status
-    tribute.reviewed_at = datetime.utcnow()
+    tribute.reviewed_at = datetime.now(timezone.utc)
     if status == TributeStatus.approved:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         tribute.published_at = now
         tribute.approved_at = now
-    tribute.updated_at = datetime.utcnow()
+    tribute.updated_at = datetime.now(timezone.utc)
 
     db.add(tribute)
     db.commit()
@@ -192,7 +202,7 @@ def set_status(db: Session, tribute: TributeModel, status: TributeStatus) -> Tri
 
 def set_featured(db: Session, tribute: TributeModel, is_featured: bool) -> TributeModel:
     tribute.is_featured = is_featured
-    tribute.updated_at = datetime.utcnow()
+    tribute.updated_at = datetime.now(timezone.utc)
     db.add(tribute)
     db.commit()
     db.refresh(tribute)
@@ -223,13 +233,38 @@ def apply_admin_patch(db: Session, tribute: TributeModel, payload: AdminTributeP
         tribute.is_featured = payload.featured
     if payload.moderation_status is not None:
         tribute.status = payload.moderation_status
-        tribute.reviewed_at = datetime.utcnow()
+        tribute.reviewed_at = datetime.now(timezone.utc)
         if payload.moderation_status == TributeStatus.approved:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             tribute.published_at = now
             tribute.approved_at = now
 
-    tribute.updated_at = datetime.utcnow()
+    if "ai_consent" in payload.model_fields_set:
+        tribute.ai_consent = bool(payload.ai_consent)
+        if not tribute.ai_consent:
+            tribute.ai_consent_basis = None
+            tribute.ai_consent_policy_version = None
+            tribute.ai_consent_at = None
+            tribute.ai_use_status = AIUseStatus.excluded
+        else:
+            if payload.ai_consent_basis is None and tribute.ai_consent_basis is None:
+                raise ValueError("An AI consent basis is required when recording consent")
+            tribute.ai_consent_basis = payload.ai_consent_basis or tribute.ai_consent_basis
+            tribute.ai_consent_policy_version = settings.ai_consent_policy_version
+            tribute.ai_consent_at = tribute.ai_consent_at or datetime.now(timezone.utc)
+            if tribute.ai_use_status == AIUseStatus.excluded:
+                tribute.ai_use_status = AIUseStatus.pending_review
+    elif payload.ai_consent_basis is not None:
+        tribute.ai_consent_basis = payload.ai_consent_basis
+
+    if "ai_redacted_content" in payload.model_fields_set:
+        tribute.ai_redacted_content = (
+            payload.ai_redacted_content.strip() if payload.ai_redacted_content else None
+        )
+    if payload.ai_use_status is not None:
+        tribute.ai_use_status = payload.ai_use_status
+
+    tribute.updated_at = datetime.now(timezone.utc)
 
     db.add(tribute)
     db.commit()

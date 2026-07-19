@@ -2,6 +2,8 @@ import { CSSProperties, DragEvent, FormEvent, useEffect, useState } from "react"
 import { Ban, Check, EyeOff, House, ImageMinus, LogOut, Send } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
+import { AdminAiPanel } from "@/components/AdminAiPanel";
+import { KenChatPage } from "@/pages/KenChatPage";
 import uploadIconSrc from "@/assets/upload-icon.png";
 
 type TributeType = "birthday" | "yearly_letter";
@@ -10,6 +12,8 @@ type TributeStatus = "pending" | "approved" | "rejected" | "hidden";
 type Visibility = "public" | "private";
 type StickyNoteColor = "sky" | "mint" | "lavender";
 type PenStyle = "classic" | "marker" | "fountain" | "gel";
+type AIConsentBasis = "submitter_opt_in" | "contributor_confirmed" | "owner_authored";
+type AIUseStatus = "excluded" | "pending_review" | "included" | "index_error";
 
 type Tribute = {
   id: string;
@@ -36,6 +40,14 @@ type Tribute = {
   has_image?: boolean;
   is_anonymous: boolean;
   public_author_label: string;
+  ai_consent: boolean;
+  ai_consent_policy_version: string | null;
+  ai_consent_at: string | null;
+  ai_consent_basis: AIConsentBasis | null;
+  ai_use_status: AIUseStatus;
+  ai_redacted_content: string | null;
+  ai_indexed_at: string | null;
+  ai_index_error: string | null;
 };
 
 type SubmissionFormState = {
@@ -48,6 +60,7 @@ type SubmissionFormState = {
   image_name: string;
   sticky_note_color: StickyNoteColor;
   pen_style: PenStyle;
+  ai_consent: boolean;
 };
 
 type TributeFilters = {
@@ -66,6 +79,10 @@ type AdminPatchForm = {
   moderation_status: TributeStatus;
   featured: boolean;
   image_data_url: string | null;
+  ai_consent: boolean;
+  ai_consent_basis: AIConsentBasis | "";
+  ai_use_status: AIUseStatus;
+  ai_redacted_content: string;
 };
 
 const INITIAL_FORM: SubmissionFormState = {
@@ -77,7 +94,8 @@ const INITIAL_FORM: SubmissionFormState = {
   image_data_url: null,
   image_name: "",
   sticky_note_color: "mint",
-  pen_style: "classic"
+  pen_style: "classic",
+  ai_consent: false
 };
 
 const INITIAL_FILTERS: TributeFilters = {
@@ -359,6 +377,13 @@ export function App() {
           />
           <NavLink
             currentPath={path}
+            href="/chat"
+            iconSrc="/nav-icons/chat.png"
+            label="Talk with Ken"
+            onNavigate={navigate}
+          />
+          <NavLink
+            currentPath={path}
             href="/guidelines"
             iconSrc="/nav-icons/guidelines.png"
             label="Guidelines"
@@ -377,6 +402,7 @@ export function App() {
       <main>
         {path === "/" && <HomePage onNavigate={navigate} />}
         {path === "/submit" && <SubmitPage />}
+        {path === "/chat" && <KenChatPage onNavigate={navigate} />}
         {path === "/guidelines" && <GuidelinesPage />}
         {path === "/admin/login" && (
           <AdminLoginPage onLogin={handleAdminLogin} onNavigate={navigate} />
@@ -391,6 +417,7 @@ export function App() {
         {![
           "/",
           "/submit",
+          "/chat",
           "/guidelines",
           "/admin/login",
           "/admin",
@@ -468,12 +495,23 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
 function GuidelinesPage() {
   return (
     <section className="content-panel reveal">
-      <h2>Submission & Privacy Guidelines</h2>
+      <h2>How Talk with Ken works</h2>
+      <p className="lede">
+        Talk with Ken is an AI memorial inspired by approved memories. It is not Ken and may get
+        things wrong.
+      </p>
+      <h3>Chatting</h3>
       <ul className="guide-list">
-        <li>Submissions may be reviewed before appearing publicly.</li>
-        <li>Anonymous submissions are displayed publicly as <strong>Anonymous</strong>.</li>
-        <li>Avoid sharing private contact details or sensitive personal information.</li>
-        <li>Minor formatting edits may be made during moderation for readability.</li>
+        <li>Ask a question or choose one of the conversation starters.</li>
+        <li>Replies use Ryo-approved information about Ken and approved tribute memories.</li>
+        <li>If the available memories do not support an answer, the AI should say it is unsure.</li>
+        <li>Your chat messages do not change Ken's persona or become tribute-wall posts.</li>
+      </ul>
+      <h3>Memories and privacy</h3>
+      <ul className="guide-list">
+        <li>Allowing a tribute to guide the AI is optional and separate from publishing it.</li>
+        <li>Only approved, cleaned-up text may be sent to OpenAI. Photos are not used.</li>
+        <li>Avoid private or sensitive details. Contributors can ask Ryo to stop AI use later.</li>
       </ul>
     </section>
   );
@@ -733,7 +771,8 @@ function SubmitPage() {
           submitted_name: form.display_mode === "anonymous" ? null : form.submitted_name.trim(),
           image_data_url: form.image_data_url,
           sticky_note_color: form.sticky_note_color,
-          pen_style: form.pen_style
+          pen_style: form.pen_style,
+          ai_consent: form.ai_consent
         })
       });
 
@@ -943,11 +982,28 @@ function SubmitPage() {
           </div>
         </div>
 
+        <div className="ai-consent-card">
+          <label className="checkbox-row ai-consent-checkbox">
+            <input
+              type="checkbox"
+              checked={form.ai_consent}
+              onChange={(event) => setForm((prev) => ({ ...prev, ai_consent: event.target.checked }))}
+            />
+            <span>
+              <strong>Optional: allow AI memorial use</strong>
+              Allow this tribute, if approved, to help shape Ken's AI memorial chat. It may be
+              processed by an AI provider and quoted in short source snippets.
+            </span>
+          </label>
+          <p>You can still submit the tribute without agreeing. This choice is separate from public wall display.</p>
+        </div>
+
         <div className="privacy-note">
           <h3>Privacy Notice</h3>
           <p>
             You may show your name or post anonymously. Anonymous tributes appear publicly as
-            Anonymous. All submissions may be reviewed before publication.
+            Anonymous. All submissions may be reviewed before publication. AI use requires the
+            separate optional permission above and an additional admin review.
           </p>
         </div>
 
@@ -1167,7 +1223,11 @@ function AdminDashboardPage({
           visibility: patchForm.visibility,
           moderation_status: patchForm.moderation_status,
           featured: patchForm.featured,
-          image_data_url: patchForm.image_data_url
+          image_data_url: patchForm.image_data_url,
+          ai_consent: patchForm.ai_consent,
+          ai_consent_basis: patchForm.ai_consent ? patchForm.ai_consent_basis || null : null,
+          ai_redacted_content: patchForm.ai_redacted_content || null,
+          ai_use_status: patchForm.ai_use_status
         })
       });
 
@@ -1181,6 +1241,24 @@ function AdminDashboardPage({
       await loadAdminTributes();
     } catch (patchError) {
       setError(patchError instanceof Error ? patchError.message : "Unexpected error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function runAiAction(action: "ai-include" | "ai-exclude" | "ai-reindex"): Promise<void> {
+    if (!selectedTribute || !patchForm) return;
+    try {
+      setSaving(true);
+      setError("");
+      const response = await adminFetch(`/api/admin/tributes/${selectedTribute.id}/${action}`, {
+        method: "POST",
+        body: action === "ai-include" ? JSON.stringify({ ai_redacted_content: patchForm.ai_redacted_content }) : undefined
+      });
+      if (!response.ok) throw new Error(await readErrorMessage(response, `Failed to ${action.replace("ai-", "")} AI memory`));
+      await loadAdminTributes();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Unexpected error");
     } finally {
       setSaving(false);
     }
@@ -1382,6 +1460,68 @@ function AdminDashboardPage({
                 </div>
               ) : null}
 
+              <div className="admin-ai-memory-card">
+                <div className="admin-ai-card-head">
+                  <div>
+                    <h3>AI Memory Review</h3>
+                    <p>Only sanitized text is embedded. The public tribute itself is unchanged.</p>
+                  </div>
+                  <span className={`persona-status persona-status--${patchForm.ai_use_status}`}>
+                    {patchForm.ai_use_status.replace("_", " ")}
+                  </span>
+                </div>
+
+                <div className="field-grid">
+                  <label className="checkbox-row admin-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={patchForm.ai_consent}
+                      onChange={(event) =>
+                        setPatchForm((prev) => prev ? {
+                          ...prev,
+                          ai_consent: event.target.checked,
+                          ai_consent_basis: event.target.checked ? prev.ai_consent_basis : "",
+                          ai_use_status: event.target.checked ? "pending_review" : "excluded"
+                        } : prev)
+                      }
+                    />
+                    Valid AI consent recorded
+                  </label>
+                  <label>
+                    Consent basis
+                    <select
+                      value={patchForm.ai_consent_basis}
+                      disabled={!patchForm.ai_consent}
+                      onChange={(event) => setPatchForm((prev) => prev ? { ...prev, ai_consent_basis: event.target.value as AIConsentBasis } : prev)}
+                    >
+                      <option value="">Select documented basis</option>
+                      <option value="submitter_opt_in">Submitter opt-in</option>
+                      <option value="contributor_confirmed">Contributor confirmed later</option>
+                      <option value="owner_authored">Owner authored / rights holder</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label>
+                  Sanitized AI memory text
+                  <textarea
+                    value={patchForm.ai_redacted_content}
+                    maxLength={5000}
+                    placeholder="Remove contact details, health information, allegations, and private third-party details before inclusion."
+                    onChange={(event) => setPatchForm((prev) => prev ? { ...prev, ai_redacted_content: event.target.value } : prev)}
+                  />
+                </label>
+                <p className="privacy-caption">
+                  Consent policy: {selectedTribute.ai_consent_policy_version ?? "not recorded"} · Indexed: {selectedTribute.ai_indexed_at ? toPostedDateLabel(selectedTribute.ai_indexed_at) : "not indexed"}
+                </p>
+                {selectedTribute.ai_index_error ? <p className="status error">Indexing error: {selectedTribute.ai_index_error}</p> : null}
+                <div className="cta-row">
+                  <ParticleButton type="button" size="sm" onClick={() => void runAiAction("ai-include")} disabled={saving || !patchForm.ai_consent || !patchForm.ai_redacted_content.trim()}>Include & index</ParticleButton>
+                  <ParticleButton type="button" size="sm" variant="soft" onClick={() => void runAiAction("ai-exclude")} disabled={saving}>Exclude & delete chunks</ParticleButton>
+                  <ParticleButton type="button" size="sm" variant="soft" onClick={() => void runAiAction("ai-reindex")} disabled={saving || !patchForm.ai_consent || !patchForm.ai_redacted_content.trim()}>Retry indexing</ParticleButton>
+                </div>
+              </div>
+
               <label>
                 Moderation Notes
                 <textarea
@@ -1432,6 +1572,7 @@ function AdminDashboardPage({
           )}
         </div>
       )}
+      <AdminAiPanel token={token} onUnauthorized={onLogout} />
     </section>
   );
 }
@@ -1447,7 +1588,11 @@ function makePatchForm(tribute: Tribute): AdminPatchForm {
     visibility: tribute.visibility,
     moderation_status: tribute.status,
     featured: tribute.is_featured,
-    image_data_url: tribute.image_data_url
+    image_data_url: tribute.image_data_url,
+    ai_consent: tribute.ai_consent ?? false,
+    ai_consent_basis: tribute.ai_consent_basis ?? "",
+    ai_use_status: tribute.ai_use_status ?? "excluded",
+    ai_redacted_content: tribute.ai_redacted_content ?? ""
   };
 }
 

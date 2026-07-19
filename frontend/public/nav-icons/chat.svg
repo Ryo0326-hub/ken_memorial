@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Talk with Ken</title>
+  <path d="M11 15c0-4 3-7 7-7h28c4 0 7 3 7 7v23c0 4-3 7-7 7H29L17 56l2-11h-1c-4 0-7-3-7-7V15Z" fill="#f5e8c8" stroke="#374235" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M21 24h22M21 33h15" fill="none" stroke="#55725b" stroke-width="4" stroke-linecap="round"/>
+  <path d="m46 6 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z" fill="#d6a856" stroke="#374235" stroke-width="2" stroke-linejoin="round"/>
+</svg>

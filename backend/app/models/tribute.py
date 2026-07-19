@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Boolean, Date, DateTime, Enum, Index, Integer, String, Text
@@ -6,6 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 from app.schemas.tribute import (
+    AIConsentBasis,
+    AIUseStatus,
     DisplayMode,
     PenStyle,
     StickyNoteColor,
@@ -59,17 +61,34 @@ class TributeModel(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     moderation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ai_consent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ai_consent_policy_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    ai_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ai_consent_basis: Mapped[AIConsentBasis | None] = mapped_column(
+        Enum(AIConsentBasis, name="ai_consent_basis", native_enum=False), nullable=True
+    )
+    ai_use_status: Mapped[AIUseStatus] = mapped_column(
+        Enum(AIUseStatus, name="ai_use_status", native_enum=False),
+        nullable=False,
+        default=AIUseStatus.excluded,
+    )
+    ai_redacted_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ai_index_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     @property
     def has_image(self) -> bool:

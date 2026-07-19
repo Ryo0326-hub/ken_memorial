@@ -12,6 +12,7 @@ from app.services.tributes import (
     set_featured,
     set_status,
 )
+from app.services.ai.memory import sync_tribute_memory
 
 router = APIRouter(tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -43,7 +44,11 @@ def patch_tribute(
     tribute = get_by_id(db, tribute_id)
     if not tribute:
         raise HTTPException(status_code=404, detail="Tribute not found")
-    return apply_admin_patch(db, tribute, payload)
+    try:
+        tribute = apply_admin_patch(db, tribute, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return sync_tribute_memory(db, tribute)
 
 
 @router.post("/tributes/{tribute_id}/approve", response_model=Tribute)
@@ -51,7 +56,7 @@ def approve_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
     tribute = get_by_id(db, tribute_id)
     if not tribute:
         raise HTTPException(status_code=404, detail="Tribute not found")
-    return set_status(db, tribute, TributeStatus.approved)
+    return sync_tribute_memory(db, set_status(db, tribute, TributeStatus.approved))
 
 
 @router.post("/tributes/{tribute_id}/reject", response_model=Tribute)
@@ -59,7 +64,7 @@ def reject_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
     tribute = get_by_id(db, tribute_id)
     if not tribute:
         raise HTTPException(status_code=404, detail="Tribute not found")
-    return set_status(db, tribute, TributeStatus.rejected)
+    return sync_tribute_memory(db, set_status(db, tribute, TributeStatus.rejected))
 
 
 @router.post("/tributes/{tribute_id}/hide", response_model=Tribute)
@@ -67,7 +72,7 @@ def hide_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
     tribute = get_by_id(db, tribute_id)
     if not tribute:
         raise HTTPException(status_code=404, detail="Tribute not found")
-    return set_status(db, tribute, TributeStatus.hidden)
+    return sync_tribute_memory(db, set_status(db, tribute, TributeStatus.hidden))
 
 
 @router.post("/tributes/{tribute_id}/unhide", response_model=Tribute)
@@ -75,7 +80,7 @@ def unhide_tribute(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
     tribute = get_by_id(db, tribute_id)
     if not tribute:
         raise HTTPException(status_code=404, detail="Tribute not found")
-    return set_status(db, tribute, TributeStatus.approved)
+    return sync_tribute_memory(db, set_status(db, tribute, TributeStatus.approved))
 
 
 @router.post("/tributes/{tribute_id}/pin", response_model=Tribute)

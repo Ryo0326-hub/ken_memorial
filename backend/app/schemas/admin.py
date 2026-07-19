@@ -2,7 +2,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
-from app.schemas.tribute import TributeStatus, Visibility
+from app.schemas.tribute import AIConsentBasis, AIUseStatus, TributeStatus, Visibility
 
 
 class AdminLoginRequest(BaseModel):
@@ -26,3 +26,16 @@ class AdminTributePatch(BaseModel):
     occasion_date: date | None = None
     moderation_notes: str | None = Field(default=None, max_length=2000)
     image_data_url: str | None = Field(default=None, max_length=4_500_000)
+    ai_consent: bool | None = None
+    ai_consent_basis: AIConsentBasis | None = None
+    ai_redacted_content: str | None = Field(default=None, max_length=5000)
+    ai_use_status: AIUseStatus | None = None
+
+
+class AdminAIIncludeRequest(BaseModel):
+    ai_redacted_content: str = Field(min_length=10, max_length=5000)
+
+
+class AdminFeedbackPatch(BaseModel):
+    reviewed: bool = True
+    resolution_notes: str | None = Field(default=None, max_length=2000)

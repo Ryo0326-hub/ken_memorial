@@ -28,6 +28,19 @@ class TributeStatus(str, Enum):
     hidden = "hidden"
 
 
+class AIConsentBasis(str, Enum):
+    submitter_opt_in = "submitter_opt_in"
+    contributor_confirmed = "contributor_confirmed"
+    owner_authored = "owner_authored"
+
+
+class AIUseStatus(str, Enum):
+    excluded = "excluded"
+    pending_review = "pending_review"
+    included = "included"
+    index_error = "index_error"
+
+
 class StickyNoteColor(str, Enum):
     sunshine = "sunshine"
     sky = "sky"
@@ -55,6 +68,7 @@ class SubmissionCreate(BaseModel):
     image_data_url: str | None = Field(default=None, max_length=4_500_000)
     sticky_note_color: StickyNoteColor = StickyNoteColor.sunshine
     pen_style: PenStyle = PenStyle.classic
+    ai_consent: bool = False
 
     @model_validator(mode="after")
     def validate_submission(self) -> "SubmissionCreate":
@@ -107,6 +121,46 @@ class Tribute(BaseModel):
     is_featured: bool = False
     created_at: datetime
     updated_at: datetime
+    approved_at: datetime | None = None
+    has_image: bool = False
+    ai_consent: bool = False
+    ai_consent_policy_version: str | None = None
+    ai_consent_at: datetime | None = None
+    ai_consent_basis: AIConsentBasis | None = None
+    ai_use_status: AIUseStatus = AIUseStatus.excluded
+    ai_redacted_content: str | None = None
+    ai_indexed_at: datetime | None = None
+    ai_index_error: str | None = None
+
+    @computed_field
+    @property
+    def is_anonymous(self) -> bool:
+        return self.display_mode == DisplayMode.anonymous
+
+    @computed_field
+    @property
+    def public_author_label(self) -> str:
+        return self.public_display_name
+
+
+class PublicTribute(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    type: TributeType
+    title: str | None = None
+    content: str
+    display_mode: DisplayMode
+    relationship_to_ken: str | None = None
+    year_tag: int | None = None
+    occasion_date: date | None = None
+    image_data_url: str | None = None
+    sticky_note_color: StickyNoteColor
+    pen_style: PenStyle
+    public_display_name: str
+    submitted_at: datetime
+    is_featured: bool = False
+    created_at: datetime
     approved_at: datetime | None = None
     has_image: bool = False
 

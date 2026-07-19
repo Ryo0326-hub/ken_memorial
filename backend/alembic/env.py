@@ -7,7 +7,14 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.db import Base, normalize_database_url
-from app.models import TributeModel
+from app.models import (
+    ChatFeedbackModel,
+    ChatGenerationModel,
+    ChatRateEventModel,
+    MemoryChunkModel,
+    PersonaProfileModel,
+    TributeModel,
+)
 
 config = context.config
 
@@ -18,7 +25,14 @@ if database_url := os.getenv("DATABASE_URL"):
     config.set_main_option("sqlalchemy.url", normalize_database_url(database_url))
 
 # Imported models are required to populate metadata for autogenerate.
-_ = TributeModel
+_ = (
+    TributeModel,
+    PersonaProfileModel,
+    MemoryChunkModel,
+    ChatGenerationModel,
+    ChatFeedbackModel,
+    ChatRateEventModel,
+)
 
 target_metadata = Base.metadata
 

@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.schemas.tribute import Tribute, TributeType
+from app.schemas.tribute import PublicTribute, TributeType
 from app.services.tributes import get_public_by_id, get_public_image_data, list_public_tributes
 
 router = APIRouter(tags=["public"])
 
 
-@router.get("/tributes", response_model=list[Tribute])
+@router.get("/tributes", response_model=list[PublicTribute])
 def get_tributes(
     type: TributeType | None = None,
     year: int | None = None,
@@ -18,7 +18,7 @@ def get_tributes(
     page_size: int = 20,
     include_images: bool = True,
     db: Session = Depends(get_db),
-) -> list[Tribute]:
+) -> list[PublicTribute]:
     return list_public_tributes(db, type, year, anonymous, featured, page, page_size, include_images)
 
 
@@ -36,8 +36,8 @@ def get_tribute_image(tribute_id: str, db: Session = Depends(get_db)) -> Respons
     )
 
 
-@router.get("/tributes/{tribute_id}", response_model=Tribute)
-def get_tribute_detail(tribute_id: str, db: Session = Depends(get_db)) -> Tribute:
+@router.get("/tributes/{tribute_id}", response_model=PublicTribute)
+def get_tribute_detail(tribute_id: str, db: Session = Depends(get_db)) -> PublicTribute:
     tribute = get_public_by_id(db, tribute_id)
     if not tribute:
         raise HTTPException(status_code=404, detail="Tribute not found")

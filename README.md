@@ -17,6 +17,7 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
   - `/` Home (hero + integrated Tribute Wall)
   - `/submit` Leave a Tribute
   - `/guidelines` Submission/privacy guidelines
+  - `/chat` governed, memory-based AI memorial chat (feature-flagged)
 - Admin moderation app:
   - `/admin/login`
   - `/admin/tributes`
@@ -34,6 +35,7 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
   - sticky note color selection (Sky, Mint, Lavender)
   - pen style selection (Classic, Marker, Fountain)
   - optional single image attachment (JPEG/PNG/WEBP, max 3MB)
+  - separate, optional AI-memory consent (unchecked by default)
 - Automatic metadata:
   - posted date is recorded automatically and displayed on each sticky note
 - Moderation API actions:
@@ -42,6 +44,9 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
   - patch moderation/content metadata
   - approve/reject/hide/unhide
   - pin/unpin
+  - sanitize, include, exclude, and re-index consented AI memories
+  - create, review, activate, and roll back versioned Core Personas
+  - review AI answer feedback and reports
 
 ## Quick Start (Scaffold)
 
@@ -89,6 +94,10 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+The currently configured deployment database is Supabase rather than the older Neon setup
+described above. Migration `0007_ai_memorial_chat` enables the PostgreSQL `vector` extension;
+confirm the deployment database role can create that extension before applying it.
+
 ### Full Local Stack
 
 ```bash
@@ -131,6 +140,9 @@ For production frontend deployment (for example, Vercel), set:
 VITE_API_BASE_URL=https://your-backend-domain
 ```
 
+`frontend/vercel.json` contains the SPA fallback required for direct `/chat`, `/submit`,
+`/guidelines`, and admin-route refreshes.
+
 ### Backend
 
 ```bash
@@ -143,6 +155,28 @@ uvicorn app.main:app --reload
 ```
 
 Open API: `http://localhost:8000`
+
+### AI memorial configuration
+
+The backend loads the root `.env` first and then `backend/.env` without overwriting existing
+values, so Docker Compose and direct `uvicorn` runs use the same server-side OpenAI key. Required
+launch settings are documented in both `.env.example` files. Keep these disabled during migration
+and review:
+
+```dotenv
+AI_CHAT_ENABLED=false
+AI_SAFETY_HMAC_SECRET=<long-random-secret>
+```
+
+After applying migrations, import the Git-ignored private persona draft from `backend/` with:
+
+```bash
+python -m scripts.import_persona
+```
+
+Review it in the admin dashboard and activate it only when Ryo approves it. Then index only
+approved, public, explicitly consented tributes through the admin memory controls. See
+`docs/CORE_PERSONA_OPERATIONS.md` for the full workflow.
 
 ## Next Build Steps
 
