@@ -3,7 +3,6 @@ import { Flag, ShieldCheck, ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
 
-type Relationship = "family" | "friend" | "school" | "teammate" | "other" | "prefer_not_to_say";
 type GroundingMode = "profile" | "memory" | "mixed" | "uncertain" | "safety";
 type FeedbackRating = "helpful" | "inaccurate" | "inappropriate" | "too_personal";
 
@@ -33,8 +32,16 @@ type ChatTurn = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
-const SESSION_KEY = "ken_ai_memorial_chat";
-const SESSION_ID_KEY = "ken_ai_memorial_session_id";
+const SESSION_KEY = "ken_ask_about_chat_v2";
+const SESSION_ID_KEY = "ken_ask_about_session_id_v2";
+const NOTICE_KEY_PREFIX = "ken_ask_about_notice_";
+const ANSWER_BASIS_LABELS: Record<GroundingMode, string> = {
+  profile: "Based on Ryo-approved Ken Profile",
+  memory: "Based on shared memories",
+  mixed: "Based on Ken Profile and shared memories",
+  uncertain: "Not enough approved information",
+  safety: "Safety response"
+};
 
 function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
@@ -74,7 +81,6 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
   const [config, setConfig] = useState<ChatConfig | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>(readTurns);
   const [draft, setDraft] = useState("");
-  const [relationship, setRelationship] = useState<Relationship | "">("");
   const [acknowledged, setAcknowledged] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -99,12 +105,12 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
     try {
       setLoading(true);
       const response = await fetch(apiUrl("/api/ai-chat/config"));
-      if (!response.ok) throw new Error(await readError(response, "Unable to load memorial chat."));
+      if (!response.ok) throw new Error(await readError(response, "Unable to load the memory guide."));
       const loaded = (await response.json()) as ChatConfig;
       setConfig(loaded);
-      setAcknowledged(localStorage.getItem(`ken_ai_notice_${loaded.notice_version}`) === "accepted");
+      setAcknowledged(localStorage.getItem(`${NOTICE_KEY_PREFIX}${loaded.notice_version}`) === "accepted");
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load memorial chat.");
+      setError(loadError instanceof Error ? loadError.message : "Unable to load the memory guide.");
     } finally {
       setLoading(false);
     }
@@ -112,7 +118,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
 
   function acceptNotice(): void {
     if (!config) return;
-    localStorage.setItem(`ken_ai_notice_${config.notice_version}`, "accepted");
+    localStorage.setItem(`${NOTICE_KEY_PREFIX}${config.notice_version}`, "accepted");
     setAcknowledged(true);
   }
 
@@ -153,11 +159,10 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
         body: JSON.stringify({
           session_id: getSessionId(),
           message,
-          relationship: relationship || null,
           history
         })
       });
-      if (!response.ok) throw new Error(await readError(response, "The memorial chat could not answer."));
+      if (!response.ok) throw new Error(await readError(response, "The memory guide could not answer."));
       const payload = (await response.json()) as {
         request_id: string;
         message: string;
@@ -177,7 +182,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
       ]);
     } catch (sendError) {
       if ((sendError as Error).name !== "AbortError") {
-        setError(sendError instanceof Error ? sendError.message : "The memorial chat could not answer.");
+        setError(sendError instanceof Error ? sendError.message : "The memory guide could not answer.");
         setRetryMessage(message);
       }
     } finally {
@@ -231,15 +236,15 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
   const remaining = (config?.max_message_characters ?? 1000) - draft.length;
 
   if (loading) {
-    return <section className="content-panel chat-page"><p>Opening the memorial chat...</p></section>;
+    return <section className="content-panel chat-page"><p>Opening Ask About Ken...</p></section>;
   }
 
   return (
     <section className="content-panel reveal chat-page">
       <div className="chat-heading">
         <div>
-          <span className="ai-memorial-badge"><ShieldCheck size={15} /> AI memorial</span>
-          <h1>Talk with Ken</h1>
+          <span className="ai-memorial-badge"><ShieldCheck size={15} /> AI memory guide</span>
+          <h1>Ask About Ken</h1>
         </div>
         <ParticleButton
           type="button"
@@ -273,7 +278,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                 onClick={acceptNotice}
                 icon={<img src="/action-icons/chat-ai.png" alt="" className="action-button__icon" />}
               >
-                I understand — start chatting
+                I understand — ask a question
               </ParticleButton>
               <ParticleButton
                 type="button"
@@ -293,25 +298,13 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
         <>
           {!config?.enabled ? (
             <div className="chat-resting" role="status">
-              <h2>The memorial chat is resting right now.</h2>
-              <p>The persona is still under review or the feature is switched off. Please visit the tribute wall.</p>
+              <h2>The memory guide is resting right now.</h2>
+              <p>The Ken Profile is still under review or the feature is switched off. Please visit the tribute wall.</p>
               <ParticleButton type="button" variant="soft" onClick={() => onNavigate("/")}>Visit tribute wall</ParticleButton>
             </div>
           ) : (
             <>
-              <div className="chat-context-row">
-                <label>
-                  How did you know Ken? <span>(optional)</span>
-                  <select value={relationship} onChange={(event) => setRelationship(event.target.value as Relationship | "")}>
-                    <option value="">Choose if you'd like</option>
-                    <option value="family">Family</option>
-                    <option value="friend">Friend</option>
-                    <option value="school">School</option>
-                    <option value="teammate">Teammate</option>
-                    <option value="other">Other</option>
-                    <option value="prefer_not_to_say">I'd rather not say</option>
-                  </select>
-                </label>
+              <div className="chat-context-row chat-context-row--guide">
                 <button className="how-link" type="button" onClick={() => onNavigate("/guidelines")}>How this works</button>
               </div>
 
@@ -326,11 +319,16 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
               <div className="chat-transcript" aria-live="polite">
                 {turns.map((turn) => (
                   <article key={turn.id} className={`chat-message chat-message--${turn.role}`}>
-                    <span className="chat-message-label">{turn.role === "user" ? "You" : "AI memorial"}</span>
+                    <span className="chat-message-label">{turn.role === "user" ? "You" : "AI memory guide"}</span>
                     <p>{turn.content}</p>
+                    {turn.role === "assistant" && turn.grounding_mode ? (
+                      <span className={`chat-answer-basis chat-answer-basis--${turn.grounding_mode}`}>
+                        {ANSWER_BASIS_LABELS[turn.grounding_mode]}
+                      </span>
+                    ) : null}
                     {turn.role === "assistant" && turn.sources?.length ? (
                       <details className="chat-sources">
-                        <summary>Based on {turn.sources.length === 1 ? "a shared memory" : "shared memories"}</summary>
+                        <summary>View shared {turn.sources.length === 1 ? "memory source" : "memory sources"}</summary>
                         <div className="chat-source-list">
                           {turn.sources.map((source) => (
                             <div className="chat-source-card" key={source.tribute_id}>
@@ -358,7 +356,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                     ) : null}
                   </article>
                 ))}
-                {sending ? <div className="chat-typing" role="status">The memorial is gathering the right memories<span>...</span></div> : null}
+                {sending ? <div className="chat-typing" role="status">Looking through Ken's profile and shared memories<span>...</span></div> : null}
               </div>
 
               {error ? <p className="status error">{error}</p> : null}
@@ -369,14 +367,22 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   maxLength={config.max_message_characters}
-                  placeholder="Write a message..."
-                  aria-label="Message the AI memorial"
+                  placeholder="Ask something about Ken..."
+                  aria-label="Ask the AI memory guide about Ken"
                   rows={3}
                 />
                 <div className="chat-composer-actions">
                   <span className={remaining <= 120 ? "character-count near-limit" : "character-count"}>{remaining} left</span>
                   {sending ? (
-                    <ParticleButton type="button" variant="soft" onClick={() => abortRef.current?.abort()}>Cancel</ParticleButton>
+                    <ParticleButton
+                      type="button"
+                      variant="soft"
+                      className="action-button action-button--cancel chat-cancel-button"
+                      onClick={() => abortRef.current?.abort()}
+                      icon={<img src="/action-icons/chat-cancel.png" alt="" className="action-button__icon" />}
+                    >
+                      Cancel
+                    </ParticleButton>
                   ) : null}
                   <ParticleButton
                     type="submit"
@@ -404,7 +410,19 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                     <div className="chat-report-box">
                       <label>What felt wrong? (optional)<textarea value={reportComment} onChange={(event) => setReportComment(event.target.value)} maxLength={1000} /></label>
                       <label className="checkbox-row"><input type="checkbox" checked={attachExchange} onChange={(event) => setAttachExchange(event.target.checked)} />Attach the related message and answer to this report. This is optional and requires your permission.</label>
-                      <div className="cta-row"><ParticleButton type="button" size="sm" onClick={() => void submitFeedback(lastAssistant, "inappropriate", attachExchange)}>Send report</ParticleButton><ParticleButton type="button" size="sm" variant="soft" onClick={() => setReportRequestId(null)}>Cancel</ParticleButton></div>
+                      <div className="cta-row">
+                        <ParticleButton type="button" size="sm" onClick={() => void submitFeedback(lastAssistant, "inappropriate", attachExchange)}>Send report</ParticleButton>
+                        <ParticleButton
+                          type="button"
+                          size="sm"
+                          variant="soft"
+                          className="action-button action-button--cancel"
+                          onClick={() => setReportRequestId(null)}
+                          icon={<img src="/action-icons/chat-cancel.png" alt="" className="action-button__icon" />}
+                        >
+                          Cancel
+                        </ParticleButton>
+                      </div>
                     </div>
                   ) : null}
                 </div>

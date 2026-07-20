@@ -20,10 +20,10 @@ from app.services.ai.rate_limit import RateLimitExceeded, enforce_rate_limit
 router = APIRouter(prefix="/ai-chat", tags=["ai-chat"])
 
 STARTER_PROMPTS = [
-    "What did you enjoy doing?",
-    "What kind of friend were you?",
-    "Tell me a memory people shared about you.",
-    "What made you laugh?",
+    "What sports did Ken enjoy?",
+    "What kind of friend was Ken?",
+    "Where did Ken live and go to school?",
+    "Tell me about a memory someone shared about Ken.",
 ]
 
 
@@ -55,12 +55,12 @@ def post_chat_message(
     if not settings.ai_chat_enabled:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="The memorial chat is resting right now. Please visit the tribute wall.",
+            detail="The memory guide is resting right now. Please visit the tribute wall.",
         )
     if not active or not settings.openai_api_key or not settings.ai_safety_hmac_secret:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="The memorial chat is not ready yet.",
+            detail="The memory guide is not ready yet.",
         )
 
     try:
@@ -72,7 +72,7 @@ def post_chat_message(
     except RateLimitExceeded as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Let's pause here for a little while. The memorial chat has reached its message limit.",
+            detail="Let's pause here for a little while. The memory guide has reached its message limit.",
         ) from exc
 
     try:
@@ -82,7 +82,7 @@ def post_chat_message(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="The memorial chat couldn't reach the memory archive just now. Please try again later.",
+            detail="The memory guide couldn't reach the approved sources just now. Please try again later.",
         ) from exc
 
 

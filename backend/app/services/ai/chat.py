@@ -15,22 +15,25 @@ from app.schemas.chat import (
 )
 from app.services.ai.memory import RetrievedMemory, retrieve_memories
 from app.services.ai.openai_gateway import OpenAIGateway
-from app.services.ai.prompt import build_memorial_instructions
-from app.services.ai.safety import deterministic_safety_response, is_identity_question
+from app.services.ai.prompt import build_ken_guide_instructions, build_ken_profile_evidence
+from app.services.ai.safety import (
+    contains_first_person_ken_narration,
+    deterministic_safety_response,
+    is_impersonation_request,
+)
 
 
 MODERATION_REFUSAL = (
-    "I can't continue with that request in this memorial chat. We can talk about approved memories "
-    "of Ken, or you can return to the tribute wall."
+    "This guide can't continue with that request. It can answer questions about Ken using approved "
+    "profile information and shared memories, or you can return to the tribute wall."
 )
-IDENTITY_DISCLOSURE = (
-    "I'm not really Ken. I'm an AI memorial shaped by Ryo's approved profile and public memories "
-    "that contributors allowed the memorial to use. I can be mistaken, and I can't know Ken's "
-    "private thoughts or speak for what he would believe today."
+IMPERSONATION_BOUNDARY = (
+    "This guide can’t speak as Ken or create a message from him. It can share what Ryo’s approved "
+    "profile and consented memories say about him."
 )
 UNGROUNDED_RESPONSE = (
-    "I don't have a reliable shared memory about that in the approved archive, so I don't want to "
-    "make something up. You could ask about the places, activities, or stories that are documented here."
+    "The approved profile and shared memories don't contain enough reliable information to answer "
+    "that without guessing. You could ask about the places, activities, or stories documented here."
 )
 
 
@@ -97,8 +100,8 @@ def create_chat_response(
     fixed_safety = deterministic_safety_response(payload.message)
     if fixed_safety:
         return _fixed_response(db, persona, fixed_safety, GroundingMode.safety)
-    if is_identity_question(payload.message):
-        return _fixed_response(db, persona, IDENTITY_DISCLOSURE, GroundingMode.profile)
+    if is_impersonation_request(payload.message):
+        return _fixed_response(db, persona, IMPERSONATION_BOUNDARY, GroundingMode.safety)
 
     gateway = gateway or OpenAIGateway()
     moderation_text = "\n".join(
@@ -114,15 +117,24 @@ def create_chat_response(
         for item in retrieved
     ]
     generated: ModelChatOutput = gateway.generate(
-        instructions=build_memorial_instructions(persona),
+        instructions=build_ken_guide_instructions(persona),
         message=payload.message,
         history=payload.history,
-        relationship=payload.relationship,
         memory_context=memory_context,
         safety_identifier=safety_identifier,
     )
     if gateway.moderate(generated.message):
         return _fixed_response(db, persona, MODERATION_REFUSAL, GroundingMode.safety)
+    profile_evidence = build_ken_profile_evidence(persona)
+    documented_quotes = tuple(
+        str(saying[field])
+        for saying in profile_evidence.get("known_sayings", [])
+        if isinstance(saying, dict)
+        for field in ("quote", "saying")
+        if field in saying and str(saying[field]).strip()
+    )
+    if contains_first_person_ken_narration(generated.message, documented_quotes):
+        return _fixed_response(db, persona, IMPERSONATION_BOUNDARY, GroundingMode.safety)
 
     retrieved_by_id = {item.tribute.id: item for item in retrieved}
     valid_ids: list[str] = []

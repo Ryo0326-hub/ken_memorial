@@ -17,7 +17,7 @@ DEFAULT_PERSONA_PATH = Path(__file__).resolve().parents[1] / "private" / "ken_pe
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Import a private, structured Core Persona draft into the memorial database."
+        description="Import a private, structured Ken Profile draft into the memorial database."
     )
     parser.add_argument("path", nargs="?", type=Path, default=DEFAULT_PERSONA_PATH)
     parser.add_argument(
@@ -31,7 +31,7 @@ def main() -> None:
     raw = json.loads(args.path.read_text(encoding="utf-8"))
     profile = PersonaProfileContent.model_validate(raw["profile"])
     profile_data = profile.model_dump(mode="json")
-    change_note = str(raw.get("change_note") or "Imported private Core Persona draft v1")
+    change_note = str(raw.get("change_note") or "Imported private Ken Profile draft v1")
 
     with SessionLocal() as db:
         personas = list(
@@ -70,7 +70,7 @@ def main() -> None:
             persona = activate_persona(db, persona, args.created_by)
 
         print(
-            f"Imported Core Persona version {persona.version} with status {persona.status.value}."
+            f"Imported Ken Profile version {persona.version} with status {persona.status.value}."
         )
 
 

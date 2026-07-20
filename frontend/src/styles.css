@@ -345,9 +345,12 @@ h2 {
   filter: saturate(1.03);
 }
 
-.ui-button:active:not(:disabled),
-.particle-button--active {
+.ui-button:active:not(:disabled) {
   transform: translateY(1px) scale(0.978);
+}
+
+.particle-button--active {
+  animation: mechanical-button-press 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
 }
 
 .ui-button:disabled {
@@ -627,32 +630,45 @@ h2 {
   stroke-width: 2.15;
 }
 
-.particle-halo {
+.mechanical-feedback {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 120%;
-  height: 180%;
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  background: radial-gradient(circle at center, var(--particle-halo) 0%, rgba(0, 0, 0, 0) 64%);
+  inset: -5px;
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
 }
 
-.particle-burst {
+.mechanical-feedback__frame {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.92) 0 18%, transparent 24%),
-    linear-gradient(145deg, var(--particle-top), var(--particle-bottom));
-  box-shadow:
-    0 0 12px var(--particle-glow),
-    0 0 24px var(--particle-halo);
-  pointer-events: none;
-  z-index: 0;
+  inset: 0;
+  border: 1px solid var(--particle-bottom);
+  border-radius: calc(var(--control-radius-lg) + 3px);
+  opacity: 0;
+  animation: mechanical-frame-lock 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+.mechanical-feedback__latch {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--particle-bottom);
+  box-shadow: 0 0 7px var(--particle-glow);
+  opacity: 0;
+}
+
+.mechanical-feedback__latch--left {
+  left: -9px;
+  animation: mechanical-latch-left 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+.mechanical-feedback__latch--right {
+  right: -9px;
+  animation: mechanical-latch-right 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+.particle-button--active .particle-button__icon {
+  animation: mechanical-icon-snap 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
 }
 
 .hero-leave-icon-btn {
@@ -1703,6 +1719,95 @@ textarea {
   }
 }
 
+@keyframes mechanical-button-press {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  22% {
+    transform: translateY(3px) scale(0.975);
+  }
+  48% {
+    transform: translateY(-1px) scale(1.008);
+  }
+  72% {
+    transform: translateY(0.5px) scale(0.997);
+  }
+}
+
+@keyframes mechanical-frame-lock {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  24% {
+    opacity: 0.58;
+    transform: scale(0.975);
+  }
+  52% {
+    opacity: 0.32;
+    transform: scale(1.025);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.045);
+  }
+}
+
+@keyframes mechanical-latch-left {
+  0% {
+    opacity: 0;
+    transform: translate(-6px, -50%) scaleX(0.4);
+  }
+  24% {
+    opacity: 0.88;
+    transform: translate(8px, -50%) scaleX(1);
+  }
+  52% {
+    opacity: 0.48;
+    transform: translate(1px, -50%) scaleX(0.78);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-3px, -50%) scaleX(0.35);
+  }
+}
+
+@keyframes mechanical-latch-right {
+  0% {
+    opacity: 0;
+    transform: translate(6px, -50%) scaleX(0.4);
+  }
+  24% {
+    opacity: 0.88;
+    transform: translate(-8px, -50%) scaleX(1);
+  }
+  52% {
+    opacity: 0.48;
+    transform: translate(-1px, -50%) scaleX(0.78);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(3px, -50%) scaleX(0.35);
+  }
+}
+
+@keyframes mechanical-icon-snap {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  22% {
+    transform: scale(0.9) rotate(-4deg);
+  }
+  48% {
+    transform: scale(1.08) rotate(2deg);
+  }
+  72% {
+    transform: scale(0.99) rotate(-0.5deg);
+  }
+}
+
 @keyframes rise {
   from {
     transform: translateY(14px);
@@ -1717,7 +1822,11 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .loading-dots span,
   .loading-note-line,
-  .loading-tribute-card {
+  .loading-tribute-card,
+  .particle-button--active,
+  .particle-button--active .particle-button__icon,
+  .mechanical-feedback__frame,
+  .mechanical-feedback__latch {
     animation: none;
   }
 }
@@ -1971,7 +2080,7 @@ textarea {
   }
 }
 
-/* Governed AI memorial chat */
+/* Governed Ask About Ken memory guide */
 .ai-consent-card,
 .admin-ai-memory-card,
 .admin-ai-card,
@@ -2131,6 +2240,11 @@ textarea {
   font-weight: 400;
 }
 
+.chat-context-row--guide {
+  justify-content: flex-end;
+  align-items: center;
+}
+
 .how-link {
   border: 0;
   background: transparent;
@@ -2199,6 +2313,31 @@ textarea {
   margin: 0.35rem 0 0;
   line-height: 1.68;
   white-space: pre-wrap;
+}
+
+.chat-answer-basis {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.68rem;
+  border: 1px solid rgba(74, 105, 78, 0.25);
+  border-radius: 999px;
+  background: rgba(226, 239, 216, 0.58);
+  color: #4b674e;
+  padding: 0.26rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.chat-answer-basis--uncertain {
+  border-color: rgba(133, 103, 53, 0.26);
+  background: rgba(246, 237, 202, 0.64);
+  color: #765916;
+}
+
+.chat-answer-basis--safety {
+  border-color: rgba(125, 77, 77, 0.22);
+  background: rgba(247, 222, 221, 0.58);
+  color: #7b3c3c;
 }
 
 .chat-sources {
@@ -2475,6 +2614,10 @@ textarea {
   .admin-ai-card-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .chat-context-row--guide {
+    align-items: flex-end;
   }
 
   .starter-prompts,

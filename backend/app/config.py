@@ -62,9 +62,11 @@ class Settings:
     ai_safety_hmac_secret: str = os.getenv("AI_SAFETY_HMAC_SECRET", "")
     ai_retrieval_threshold: float = _as_float("AI_RETRIEVAL_THRESHOLD", 0.28)
     ai_request_timeout_seconds: int = _as_int("AI_REQUEST_TIMEOUT_SECONDS", 30)
-    ai_notice_version: str = os.getenv("AI_NOTICE_VERSION", "2026-07-20")
+    ai_notice_version: str = os.getenv(
+        "AI_NOTICE_VERSION", "2026-07-21-ask-about-ken-v1"
+    )
     ai_consent_policy_version: str = os.getenv(
-        "AI_CONSENT_POLICY_VERSION", "2026-07-01"
+        "AI_CONSENT_POLICY_VERSION", "2026-07-21-ask-about-ken-v1"
     )
 
 

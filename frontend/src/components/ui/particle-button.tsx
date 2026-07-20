@@ -1,6 +1,5 @@
 import * as React from "react";
-import { useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,51 +19,13 @@ function resolveParticleToneClass(variant: ButtonProps["variant"] | undefined): 
   return "particle-tone--default";
 }
 
-function SuccessParticles({
-  buttonRef
-}: {
-  buttonRef: React.RefObject<HTMLButtonElement | null>;
-}) {
-  const button = buttonRef.current;
-  if (!button) {
-    return null;
-  }
-
+function MechanicalFeedback() {
   return (
-    <AnimatePresence>
-      {Array.from({ length: 10 }).map((_, index) => {
-        const direction = index % 2 === 0 ? 1 : -1;
-        const horizontal = direction * (20 + (index % 5) * 8);
-        const vertical = -18 - (index % 4) * 10;
-        return (
-          <motion.div
-            key={index}
-            className="particle-burst"
-            style={{ left: "50%", top: "56%" }}
-            initial={{ scale: 0, x: 0, y: 0, opacity: 0 }}
-            animate={{
-              scale: [0, 1.15, 0],
-              x: [0, horizontal],
-              y: [0, vertical, vertical - 16],
-              opacity: [0, 0.95, 0]
-            }}
-            exit={{ opacity: 0 }}
-            transition={{
-              duration: 0.7,
-              delay: index * 0.03,
-              ease: "easeOut"
-            }}
-          />
-        );
-      })}
-      <motion.div
-        className="particle-halo"
-        initial={{ scale: 0.72, opacity: 0 }}
-        animate={{ scale: [0.72, 1.18, 1.36], opacity: [0, 0.34, 0] }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.62, ease: "easeOut" }}
-      />
-    </AnimatePresence>
+    <span className="mechanical-feedback" aria-hidden="true">
+      <span className="mechanical-feedback__frame" />
+      <span className="mechanical-feedback__latch mechanical-feedback__latch--left" />
+      <span className="mechanical-feedback__latch mechanical-feedback__latch--right" />
+    </span>
   );
 }
 
@@ -72,24 +33,36 @@ function ParticleButton({
   children,
   onClick,
   onSuccess,
-  successDuration = 1000,
+  successDuration = 460,
   className,
   icon,
   disabled,
   ...props
 }: ParticleButtonProps) {
-  const [showParticles, setShowParticles] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
   const particleToneClass = resolveParticleToneClass(props.variant);
+
+  useEffect(() => () => {
+    if (feedbackTimerRef.current !== null) {
+      window.clearTimeout(feedbackTimerRef.current);
+    }
+  }, []);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (disabled) {
       return;
     }
 
-    setShowParticles(true);
-    window.setTimeout(() => {
-      setShowParticles(false);
+    if (feedbackTimerRef.current !== null) {
+      window.clearTimeout(feedbackTimerRef.current);
+    }
+
+    setShowFeedback(true);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setShowFeedback(false);
+      feedbackTimerRef.current = null;
       onSuccess?.();
     }, successDuration);
 
@@ -98,14 +71,14 @@ function ParticleButton({
 
   return (
     <span className={cn("particle-button-shell", particleToneClass)}>
-      {showParticles ? <SuccessParticles buttonRef={buttonRef} /> : null}
+      {showFeedback ? <MechanicalFeedback /> : null}
       <Button
         ref={buttonRef}
         onClick={handleClick}
         disabled={disabled}
         className={cn(
           "particle-button",
-          showParticles && "particle-button--active",
+          showFeedback && "particle-button--active",
           className
         )}
         {...props}

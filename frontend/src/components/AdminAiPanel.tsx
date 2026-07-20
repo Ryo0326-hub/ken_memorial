@@ -94,10 +94,10 @@ export function AdminAiPanel({ token, onUnauthorized }: { token: string; onUnaut
         body: JSON.stringify({ profile, change_note: changeNote })
       });
       if (!response.ok) throw new Error(await errorMessage(response));
-      setStatus("Draft saved. Public chat behavior has not changed.");
+      setStatus("Draft saved. Public guide behavior has not changed.");
       await loadAll();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Unable to save persona draft");
+      setError(saveError instanceof Error ? saveError.message : "Unable to save Ken Profile draft");
     } finally {
       setSaving(false);
     }
@@ -122,13 +122,13 @@ export function AdminAiPanel({ token, onUnauthorized }: { token: string; onUnaut
   }
 
   async function activate(persona: Persona): Promise<void> {
-    if (!window.confirm(`Activate Core Persona version ${persona.version}? This changes public chat behavior.`)) return;
+    if (!window.confirm(`Activate Ken Profile version ${persona.version}? This changes public guide behavior.`)) return;
     const response = await adminFetch(`/api/admin/ai/personas/${persona.id}/activate`, { method: "POST" });
     if (!response.ok) {
       setError(await errorMessage(response));
       return;
     }
-    setStatus(`Core Persona version ${persona.version} is active.`);
+    setStatus(`Ken Profile version ${persona.version} is active.`);
     await loadAll();
   }
 
@@ -147,12 +147,12 @@ export function AdminAiPanel({ token, onUnauthorized }: { token: string; onUnaut
 
   return (
     <div className="admin-ai-workspace">
-      <div className="section-head"><div><h2>AI Memorial Governance</h2><p>Manage versioned persona drafts and review answer feedback.</p></div></div>
+      <div className="section-head"><div><h2>AI Knowledge Governance</h2><p>Manage versioned Ken Profile drafts and review answer feedback.</p></div></div>
       {error ? <p className="status error">{error}</p> : null}
       {status ? <p className="status success">{status}</p> : null}
       <div className="admin-ai-grid">
         <section className="admin-ai-card">
-          <div className="admin-ai-card-head"><h3>Core Persona versions</h3><ParticleButton type="button" size="sm" variant="soft" onClick={() => void createDraft()}>New draft from selected</ParticleButton></div>
+          <div className="admin-ai-card-head"><h3>Ken Profile versions</h3><ParticleButton type="button" size="sm" variant="soft" onClick={() => void createDraft()}>New draft from selected profile</ParticleButton></div>
           <div className="persona-version-list">
             {personas.map((persona) => (
               <button key={persona.id} type="button" className={selectedId === persona.id ? "selected" : ""} onClick={() => setSelectedId(persona.id)}>
@@ -163,12 +163,12 @@ export function AdminAiPanel({ token, onUnauthorized }: { token: string; onUnaut
           {selected ? (
             <div className="persona-editor">
               <label>Change note<input value={changeNote} disabled={selected.status !== "draft"} onChange={(event) => setChangeNote(event.target.value)} /></label>
-              <label>Structured profile JSON<textarea value={profileJson} disabled={selected.status !== "draft"} onChange={(event) => setProfileJson(event.target.value)} spellCheck={false} /></label>
+              <label>Structured Ken Profile JSON<textarea value={profileJson} disabled={selected.status !== "draft"} onChange={(event) => setProfileJson(event.target.value)} spellCheck={false} /></label>
               <div className="cta-row">
                 {selected.status === "draft" ? <ParticleButton type="button" disabled={saving} onClick={() => void saveDraft()}>{saving ? "Saving..." : "Save draft"}</ParticleButton> : null}
                 {selected.status !== "active" ? <ParticleButton type="button" variant="soft" onClick={() => void activate(selected)}>{selected.status === "archived" ? "Roll back to this version" : "Activate version"}</ParticleButton> : null}
               </div>
-              <p className="privacy-caption">Activation is Ryo's approval step. Raw workbook text is not stored here unless you deliberately add it.</p>
+              <p className="privacy-caption">Activation is Ryo's approval step. Legacy voice, example-response, and counterexample fields are retained for compatibility but are never sent to answer generation.</p>
             </div>
           ) : null}
         </section>
@@ -178,7 +178,7 @@ export function AdminAiPanel({ token, onUnauthorized }: { token: string; onUnaut
           <div className="feedback-queue">
             {feedback.map((item) => (
               <article key={item.id} className={item.reviewed_at ? "reviewed" : ""}>
-                <div><strong>{item.rating.replace("_", " ")}</strong><span>Persona v{item.persona_version}</span></div>
+                <div><strong>{item.rating.replace("_", " ")}</strong><span>Profile v{item.persona_version}</span></div>
                 {item.comment ? <p>{item.comment}</p> : <p className="privacy-caption">No comment supplied.</p>}
                 <small>{new Date(item.created_at).toLocaleString()} · {item.source_tribute_ids.length} sources</small>
                 {!item.reviewed_at ? <ParticleButton type="button" size="sm" variant="soft" onClick={() => void resolveFeedback(item)}>Mark reviewed</ParticleButton> : <span className="persona-status persona-status--active">reviewed</span>}

@@ -47,7 +47,7 @@ def update_persona(
 ) -> PersonaProfileModel:
     persona = db.get(PersonaProfileModel, persona_id)
     if persona is None:
-        raise HTTPException(status_code=404, detail="Persona not found")
+        raise HTTPException(status_code=404, detail="Ken Profile not found")
     try:
         return patch_persona(db, persona, payload)
     except ValueError as exc:
@@ -62,7 +62,7 @@ def activate_persona_version(
 ) -> PersonaProfileModel:
     persona = db.get(PersonaProfileModel, persona_id)
     if persona is None:
-        raise HTTPException(status_code=404, detail="Persona not found")
+        raise HTTPException(status_code=404, detail="Ken Profile not found")
     return activate_persona(db, persona, str(admin.get("sub", "admin")))
 
 

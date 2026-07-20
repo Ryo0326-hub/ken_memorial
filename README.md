@@ -17,7 +17,7 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
   - `/` Home (hero + integrated Tribute Wall)
   - `/submit` Leave a Tribute
   - `/guidelines` Submission/privacy guidelines
-  - `/chat` governed, memory-based AI memorial chat (feature-flagged)
+  - `/chat` Ask About Ken, a governed third-person AI memory guide (feature-flagged)
 - Admin moderation app:
   - `/admin/login`
   - `/admin/tributes`
@@ -45,7 +45,7 @@ Ken Memorial is a digital tribute wall and living memory archive focused on resp
   - approve/reject/hide/unhide
   - pin/unpin
   - sanitize, include, exclude, and re-index consented AI memories
-  - create, review, activate, and roll back versioned Core Personas
+  - create, review, activate, and roll back versioned Ken Profiles
   - review AI answer feedback and reports
 
 ## Quick Start (Scaffold)
@@ -156,7 +156,7 @@ uvicorn app.main:app --reload
 
 Open API: `http://localhost:8000`
 
-### AI memorial configuration
+### Ask About Ken configuration
 
 The backend loads the root `.env` first and then `backend/.env` without overwriting existing
 values, so Docker Compose and direct `uvicorn` runs use the same server-side OpenAI key. Required
@@ -168,15 +168,29 @@ AI_CHAT_ENABLED=false
 AI_SAFETY_HMAC_SECRET=<long-random-secret>
 ```
 
-After applying migrations, import the Git-ignored private persona draft from `backend/` with:
+After applying migrations, import the Git-ignored private Ken Profile draft from `backend/` with:
 
 ```bash
 python -m scripts.import_persona
 ```
 
-Review it in the admin dashboard and activate it only when Ryo approves it. Then index only
-approved, public, explicitly consented tributes through the admin memory controls. See
-`docs/CORE_PERSONA_OPERATIONS.md` for the full workflow.
+Review it in the AI Knowledge Governance dashboard and activate it only when Ryo approves it.
+The guide receives only allowlisted profile fields; legacy voice, example-response, and
+counterexample fields remain stored for compatibility but are excluded from generation. Then
+index only approved, public, explicitly consented tributes through the admin memory controls.
+See `docs/CORE_PERSONA_OPERATIONS.md` for the Ken Profile workflow.
+
+For production, keep the OpenAI key and all backend AI settings on Render. Set only the public
+`VITE_API_BASE_URL` in Vercel. Use a new disclosure version when deploying this redesign:
+
+```dotenv
+AI_CHAT_ENABLED=true
+AI_NOTICE_VERSION=2026-07-21-ask-about-ken-v1
+AI_CONSENT_POLICY_VERSION=2026-07-21-ask-about-ken-v1
+```
+
+The consent-policy version applies to new opt-ins; it does not invalidate or re-index existing
+consented memories.
 
 ## Next Build Steps
 

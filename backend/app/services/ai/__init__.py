@@ -1,1 +1,1 @@
-"""Governed AI memorial chat services."""
+"""Governed Ask About Ken memory-guide services."""

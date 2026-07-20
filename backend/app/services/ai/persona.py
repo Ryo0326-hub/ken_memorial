@@ -38,7 +38,7 @@ def patch_persona(
     db: Session, persona: PersonaProfileModel, payload: PersonaPatch
 ) -> PersonaProfileModel:
     if persona.status != PersonaStatus.draft:
-        raise ValueError("Active or archived personas are immutable; create a new draft instead")
+        raise ValueError("Active or archived Ken Profile versions are immutable; create a new draft instead")
     if payload.profile is not None:
         persona.profile = payload.profile.model_dump(mode="json")
     if payload.change_note is not None:

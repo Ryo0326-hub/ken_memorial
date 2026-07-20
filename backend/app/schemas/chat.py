@@ -7,8 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 AI_MEMORIAL_NOTICE = (
-    "This is an AI memorial inspired by approved memories about Ken. "
-    "It is not Ken and may get things wrong."
+    "This is an AI-assisted memorial guide. It answers questions about Ken using a "
+    "Ryo-approved profile and selected shared memories. It does not speak as Ken, may be "
+    "mistaken, and cannot know what Ken would think or say today."
 )
 
 
@@ -36,7 +37,11 @@ class ChatMessageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     session_id: str = Field(min_length=16, max_length=100)
     message: str = Field(min_length=1, max_length=1000)
-    relationship: Relationship | None = None
+    relationship: Relationship | None = Field(
+        default=None,
+        deprecated=True,
+        description="Accepted for backwards compatibility and ignored by the memory guide.",
+    )
     history: list[HistoryMessage] = Field(default_factory=list, max_length=8)
 
     @field_validator("message")

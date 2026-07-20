@@ -379,7 +379,7 @@ export function App() {
             currentPath={path}
             href="/chat"
             iconSrc="/nav-icons/chat.png"
-            label="Talk with Ken"
+            label="Ask About Ken"
             onNavigate={navigate}
           />
           <NavLink
@@ -495,23 +495,33 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
 function GuidelinesPage() {
   return (
     <section className="content-panel reveal">
-      <h2>How Talk with Ken works</h2>
+      <h2>How Ask About Ken works</h2>
       <p className="lede">
-        Talk with Ken is an AI memorial inspired by approved memories. It is not Ken and may get
-        things wrong.
+        Ask About Ken is an AI-assisted memorial guide. It answers questions about Ken, but it is
+        not Ken and is not a way to communicate with him.
       </p>
-      <h3>Chatting</h3>
+      <h3>What this is</h3>
       <ul className="guide-list">
-        <li>Ask a question or choose one of the conversation starters.</li>
-        <li>Replies use Ryo-approved information about Ken and approved tribute memories.</li>
-        <li>If the available memories do not support an answer, the AI should say it is unsure.</li>
-        <li>Your chat messages do not change Ken's persona or become tribute-wall posts.</li>
+        <li>A warm, third-person guide for learning about Ken from approved sources.</li>
+        <li>It may be mistaken and cannot know Ken's private thoughts or present-day views.</li>
       </ul>
-      <h3>Memories and privacy</h3>
+      <h3>How answers are made</h3>
       <ul className="guide-list">
-        <li>Allowing a tribute to guide the AI is optional and separate from publishing it.</li>
-        <li>Only approved, cleaned-up text may be sent to OpenAI. Photos are not used.</li>
-        <li>Avoid private or sensitive details. Contributors can ask Ryo to stop AI use later.</li>
+        <li>Replies use a Ryo-approved Ken Profile and selected, consented tribute memories.</li>
+        <li>Every reply shows whether it used the profile, shared memories, both, or insufficient information.</li>
+        <li>Individual stories are presented as recollections, and the guide says when sources are missing or differ.</li>
+      </ul>
+      <h3>What it will not do</h3>
+      <ul className="guide-list">
+        <li>It will not imitate Ken, create a message from him, or predict what he would think today.</li>
+        <li>It will not claim afterlife contact, reveal private sources, or browse the web for information about Ken.</li>
+        <li>A memory typed into chat is not treated as verified; please submit it through the tribute form instead.</li>
+      </ul>
+      <h3>Privacy and consent</h3>
+      <ul className="guide-list">
+        <li>Your question and up to eight recent turns, filtered profile information, and retrieved sanitized excerpts are sent to OpenAI to create a reply. Photos are not used.</li>
+        <li>The app uses <code>store=false</code> and does not save routine chat transcripts. A reported exchange is stored only when you explicitly choose to attach it.</li>
+        <li>Allowing a tribute to support answers is optional and separate from publishing it. Contributors can ask Ryo to stop AI use later.</li>
       </ul>
     </section>
   );
@@ -990,9 +1000,9 @@ function SubmitPage() {
               onChange={(event) => setForm((prev) => ({ ...prev, ai_consent: event.target.checked }))}
             />
             <span>
-              <strong>Optional: allow AI memorial use</strong>
-              Allow this tribute, if approved, to help shape Ken's AI memorial chat. It may be
-              processed by an AI provider and quoted in short source snippets.
+              <strong>Optional: allow AI question-and-answer use</strong>
+              Allow this tribute, if approved, to help answer questions about Ken. It may be
+              processed by OpenAI and quoted in short source snippets.
             </span>
           </label>
           <p>You can still submit the tribute without agreeing. This choice is separate from public wall display.</p>
@@ -1463,8 +1473,8 @@ function AdminDashboardPage({
               <div className="admin-ai-memory-card">
                 <div className="admin-ai-card-head">
                   <div>
-                    <h3>AI Memory Review</h3>
-                    <p>Only sanitized text is embedded. The public tribute itself is unchanged.</p>
+                    <h3>AI Knowledge Use</h3>
+                    <p>Only sanitized text is used to help answer questions about Ken. The public tribute itself is unchanged.</p>
                   </div>
                   <span className={`persona-status persona-status--${patchForm.ai_use_status}`}>
                     {patchForm.ai_use_status.replace("_", " ")}
