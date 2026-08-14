@@ -19,16 +19,6 @@ function resolveParticleToneClass(variant: ButtonProps["variant"] | undefined): 
   return "particle-tone--default";
 }
 
-function MechanicalFeedback() {
-  return (
-    <span className="mechanical-feedback" aria-hidden="true">
-      <span className="mechanical-feedback__frame" />
-      <span className="mechanical-feedback__latch mechanical-feedback__latch--left" />
-      <span className="mechanical-feedback__latch mechanical-feedback__latch--right" />
-    </span>
-  );
-}
-
 function ParticleButton({
   children,
   onClick,
@@ -71,7 +61,6 @@ function ParticleButton({
 
   return (
     <span className={cn("particle-button-shell", particleToneClass)}>
-      {showFeedback ? <MechanicalFeedback /> : null}
       <Button
         ref={buttonRef}
         onClick={handleClick}

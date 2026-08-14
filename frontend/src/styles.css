@@ -194,36 +194,12 @@ h3 {
 }
 
 .hero-panel h1 {
+  margin: 0;
   font-family: "Indie Flower", cursive;
   font-weight: 700;
   font-size: clamp(1.35rem, 7.4vw, 4.2rem);
   line-height: 1.06;
-}
-
-.hero-main-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 0.9rem;
-}
-
-.hero-copy {
-  min-width: 0;
-  width: 100%;
-}
-
-.hero-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: clamp(0.5rem, 2vw, 1rem);
-  width: 100%;
-  margin: 0.45rem 0 0.9rem;
-}
-
-.hero-title-row h1 {
-  margin: 0;
-  min-width: 0;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -541,42 +517,22 @@ h2 {
   position: relative;
   display: inline-flex;
   overflow: visible;
-  --particle-top: rgba(255, 239, 228, 0.98);
-  --particle-bottom: rgba(194, 101, 62, 0.95);
-  --particle-halo: rgba(226, 147, 109, 0.26);
-  --particle-glow: rgba(194, 101, 62, 0.32);
   --particle-button-glow: rgba(220, 135, 96, 0.38);
 }
 
 .particle-button-shell.particle-tone--soft {
-  --particle-top: rgba(255, 252, 247, 0.98);
-  --particle-bottom: rgba(186, 145, 118, 0.9);
-  --particle-halo: rgba(204, 165, 137, 0.24);
-  --particle-glow: rgba(186, 145, 118, 0.28);
   --particle-button-glow: rgba(204, 165, 137, 0.3);
 }
 
 .particle-button-shell.particle-tone--sky {
-  --particle-top: rgba(232, 245, 252, 0.98);
-  --particle-bottom: rgba(101, 163, 194, 0.92);
-  --particle-halo: rgba(130, 183, 209, 0.24);
-  --particle-glow: rgba(101, 163, 194, 0.28);
   --particle-button-glow: rgba(130, 183, 209, 0.32);
 }
 
 .particle-button-shell.particle-tone--mint {
-  --particle-top: rgba(238, 249, 230, 0.98);
-  --particle-bottom: rgba(109, 164, 88, 0.92);
-  --particle-halo: rgba(145, 187, 126, 0.24);
-  --particle-glow: rgba(109, 164, 88, 0.28);
   --particle-button-glow: rgba(145, 187, 126, 0.32);
 }
 
 .particle-button-shell.particle-tone--lavender {
-  --particle-top: rgba(241, 236, 250, 0.98);
-  --particle-bottom: rgba(145, 117, 195, 0.92);
-  --particle-halo: rgba(172, 147, 214, 0.24);
-  --particle-glow: rgba(145, 117, 195, 0.28);
   --particle-button-glow: rgba(172, 147, 214, 0.32);
 }
 
@@ -630,80 +586,8 @@ h2 {
   stroke-width: 2.15;
 }
 
-.mechanical-feedback {
-  position: absolute;
-  inset: -5px;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.mechanical-feedback__frame {
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--particle-bottom);
-  border-radius: calc(var(--control-radius-lg) + 3px);
-  opacity: 0;
-  animation: mechanical-frame-lock 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
-}
-
-.mechanical-feedback__latch {
-  position: absolute;
-  top: 50%;
-  width: 13px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--particle-bottom);
-  box-shadow: 0 0 7px var(--particle-glow);
-  opacity: 0;
-}
-
-.mechanical-feedback__latch--left {
-  left: -9px;
-  animation: mechanical-latch-left 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
-}
-
-.mechanical-feedback__latch--right {
-  right: -9px;
-  animation: mechanical-latch-right 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
-}
-
 .particle-button--active .particle-button__icon {
   animation: mechanical-icon-snap 460ms cubic-bezier(0.22, 0.9, 0.34, 1);
-}
-
-.hero-leave-icon-btn {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 auto;
-  margin-left: 0;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid rgba(132, 90, 64, 0.28);
-  border-radius: 999px;
-  background: linear-gradient(145deg, rgba(255, 253, 248, 0.96), rgba(243, 228, 213, 0.9));
-  box-shadow:
-    0 10px 18px rgba(79, 47, 31, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86);
-  cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.hero-leave-icon-btn:hover {
-  transform: translateY(-2px);
-  border-color: rgba(159, 79, 42, 0.34);
-  box-shadow:
-    0 14px 24px rgba(79, 47, 31, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
-}
-
-.hero-leave-icon-btn:active {
-  transform: translateY(0);
-}
-
-.hero-leave-icon-btn img {
-  width: 38px;
-  height: 38px;
-  display: block;
 }
 
 .content-panel {
@@ -1735,63 +1619,6 @@ textarea {
   }
 }
 
-@keyframes mechanical-frame-lock {
-  0% {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  24% {
-    opacity: 0.58;
-    transform: scale(0.975);
-  }
-  52% {
-    opacity: 0.32;
-    transform: scale(1.025);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.045);
-  }
-}
-
-@keyframes mechanical-latch-left {
-  0% {
-    opacity: 0;
-    transform: translate(-6px, -50%) scaleX(0.4);
-  }
-  24% {
-    opacity: 0.88;
-    transform: translate(8px, -50%) scaleX(1);
-  }
-  52% {
-    opacity: 0.48;
-    transform: translate(1px, -50%) scaleX(0.78);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-3px, -50%) scaleX(0.35);
-  }
-}
-
-@keyframes mechanical-latch-right {
-  0% {
-    opacity: 0;
-    transform: translate(6px, -50%) scaleX(0.4);
-  }
-  24% {
-    opacity: 0.88;
-    transform: translate(-8px, -50%) scaleX(1);
-  }
-  52% {
-    opacity: 0.48;
-    transform: translate(-1px, -50%) scaleX(0.78);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(3px, -50%) scaleX(0.35);
-  }
-}
-
 @keyframes mechanical-icon-snap {
   0%,
   100% {
@@ -1824,9 +1651,7 @@ textarea {
   .loading-note-line,
   .loading-tribute-card,
   .particle-button--active,
-  .particle-button--active .particle-button__icon,
-  .mechanical-feedback__frame,
-  .mechanical-feedback__latch {
+  .particle-button--active .particle-button__icon {
     animation: none;
   }
 }
@@ -1861,10 +1686,6 @@ textarea {
   .hero-panel {
     min-height: auto;
     padding: 1.2rem 1rem;
-  }
-
-  .hero-main-row {
-    gap: 0.55rem;
   }
 
   .hero-photo-float {
@@ -2026,20 +1847,6 @@ textarea {
       0 5px 11px rgba(43, 26, 16, 0.16);
   }
 
-  .hero-title-row {
-    gap: 0.42rem;
-  }
-
-  .hero-leave-icon-btn {
-    width: 43px;
-    height: 43px;
-  }
-
-  .hero-leave-icon-btn img {
-    width: 31px;
-    height: 31px;
-  }
-
   .eyebrow {
     font-size: 0.74rem;
   }
@@ -2127,9 +1934,11 @@ textarea {
 }
 
 .chat-heading h1 {
-  margin: 0.5rem 0 0.25rem;
+  margin: 0;
   font-family: "Kalam", cursive;
   font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
 }
 
 .chat-heading p,
@@ -2148,20 +1957,16 @@ textarea {
   }
 
   .chat-heading {
-    align-items: flex-end;
+    align-items: center;
   }
 
-  .chat-heading > div {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .chat-heading h1 {
-    margin-top: 0;
+  .chat-title {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
 
-.ai-memorial-badge,
 .persona-status {
   display: inline-flex;
   align-items: center;

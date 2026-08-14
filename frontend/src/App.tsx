@@ -400,7 +400,7 @@ export function App() {
       </header>
 
       <main>
-        {path === "/" && <HomePage onNavigate={navigate} />}
+        {path === "/" && <HomePage />}
         {path === "/submit" && <SubmitPage />}
         {path === "/chat" && <KenChatPage onNavigate={navigate} />}
         {path === "/guidelines" && <GuidelinesPage />}
@@ -464,25 +464,11 @@ function NavLink({
   );
 }
 
-function HomePage({ onNavigate }: { onNavigate: (path: string) => void }) {
+function HomePage() {
   return (
     <>
       <section className="hero-panel reveal">
-        <div className="hero-main-row">
-          <div className="hero-copy">
-            <div className="hero-title-row">
-              <h1>Ken's digital album</h1>
-              <button
-                className="hero-leave-icon-btn"
-                onClick={() => onNavigate("/submit")}
-                type="button"
-                aria-label="Leave a Tribute"
-              >
-                <img src="/send-tribute-icon.png" alt="" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <h1>Ken's digital album</h1>
       </section>
 
       <div id="home-tribute-wall" className="home-tribute-wall">

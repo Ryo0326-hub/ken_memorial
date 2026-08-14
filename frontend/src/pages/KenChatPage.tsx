@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Flag, ShieldCheck, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Flag, ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
 
@@ -242,10 +242,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
   return (
     <section className="content-panel reveal chat-page">
       <div className="chat-heading">
-        <div>
-          <span className="ai-memorial-badge"><ShieldCheck size={15} /> AI memory guide</span>
-          <h1>Ask About Ken</h1>
-        </div>
+        <h1 className="chat-title">Ask About Ken</h1>
         <ParticleButton
           type="button"
           variant="soft"
