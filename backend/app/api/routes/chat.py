@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import json
+from collections.abc import Iterator
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import get_db
-from app.models.ai import ChatFeedbackModel, ChatGenerationModel
+from app.db import SessionLocal, get_db
+from app.models.ai import ChatFeedbackModel, ChatGenerationModel, PersonaProfileModel
 from app.schemas.chat import (
     AI_MEMORIAL_NOTICE,
     ChatConfig,
@@ -25,6 +29,14 @@ STARTER_PROMPTS = [
     "Where did Ken live and go to school?",
     "Tell me about a memory someone shared about Ken.",
 ]
+
+
+def encode_stream_event(event: dict) -> str:
+    return json.dumps(
+        event,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ) + "\n"
 
 
 @router.get("/config", response_model=ChatConfig)
@@ -84,6 +96,110 @@ def post_chat_message(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The memory guide couldn't reach the approved sources just now. Please try again later.",
         ) from exc
+
+
+@router.post("/messages/stream")
+def post_chat_message_stream(
+    payload: ChatMessageRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    active = get_active_persona(db)
+    if not settings.ai_chat_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The memory guide is resting right now. Please visit the tribute wall.",
+        )
+    if not active or not settings.openai_api_key or not settings.ai_safety_hmac_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The memory guide is not ready yet.",
+        )
+
+    try:
+        safety_identifier = enforce_rate_limit(
+            db,
+            payload.session_id,
+            request.client.host if request.client else "unknown",
+        )
+    except RateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Let's pause here for a little while. The memory guide has reached its message limit.",
+        ) from exc
+
+    active_persona_id = active.id
+
+    def event_stream() -> Iterator[str]:
+        yield encode_stream_event(
+            {
+                "type": "status",
+                "message": "Looking through Ken's profile and shared memories...",
+            }
+        )
+
+        try:
+            # The stream owns this session; the request-scoped session may close
+            # before a long-lived response iterator has finished.
+            with SessionLocal() as stream_db:
+                stream_persona = stream_db.get(PersonaProfileModel, active_persona_id)
+                if stream_persona is None:
+                    raise RuntimeError("The active Ken Profile is unavailable")
+
+                result = create_chat_response(
+                    stream_db,
+                    payload,
+                    stream_persona,
+                    safety_identifier,
+                )
+
+            yield encode_stream_event(
+                {
+                    "type": "status",
+                    "message": "Preparing the answer...",
+                }
+            )
+
+            # Only release answer text after the existing output moderation,
+            # grounding, source, and anti-impersonation checks have passed.
+            chunk_size = 32
+            for index in range(0, len(result.message), chunk_size):
+                yield encode_stream_event(
+                    {
+                        "type": "delta",
+                        "text": result.message[index : index + chunk_size],
+                    }
+                )
+
+            yield encode_stream_event(
+                {
+                    "type": "final",
+                    "request_id": result.request_id,
+                    "grounding_mode": result.grounding_mode.value,
+                    "sources": [
+                        source.model_dump(mode="json") for source in result.sources
+                    ],
+                }
+            )
+        except Exception:
+            yield encode_stream_event(
+                {
+                    "type": "error",
+                    "message": (
+                        "The memory guide couldn't reach the approved sources "
+                        "just now. Please try again later."
+                    ),
+                }
+            )
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/feedback", status_code=201)

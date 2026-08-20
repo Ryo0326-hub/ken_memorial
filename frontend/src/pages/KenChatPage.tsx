@@ -31,6 +31,17 @@ type ChatTurn = {
   sources?: SourceCard[];
 };
 
+type ChatStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "delta"; text: string }
+  | {
+      type: "final";
+      request_id: string;
+      grounding_mode: GroundingMode;
+      sources: SourceCard[];
+    }
+  | { type: "error"; message: string };
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 const SESSION_KEY = "ken_ask_about_chat_v2";
 const SESSION_ID_KEY = "ken_ask_about_session_id_v2";
@@ -84,6 +95,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
   const [acknowledged, setAcknowledged] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [streamStatus, setStreamStatus] = useState("");
   const [error, setError] = useState("");
   const [retryMessage, setRetryMessage] = useState("");
   const [feedbackSent, setFeedbackSent] = useState<Record<string, FeedbackRating>>({});
@@ -126,6 +138,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
     abortRef.current?.abort();
     abortRef.current = null;
     setSending(false);
+    setStreamStatus("");
     setTurns([]);
     setDraft("");
     setError("");
@@ -143,18 +156,27 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
       .filter((turn) => turn.role === "user" || turn.role === "assistant")
       .slice(-8)
       .map(({ role, content }) => ({ role, content }));
-    setTurns((current) => [...current, userTurn]);
+    const assistantTurnId = makeId();
+    setTurns((current) => [
+      ...current,
+      userTurn,
+      { id: assistantTurnId, role: "assistant", content: "" }
+    ]);
     setDraft("");
     setError("");
     setRetryMessage("");
     setSending(true);
+    setStreamStatus("Starting...");
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const response = await fetch(apiUrl("/api/ai-chat/messages"), {
+      const response = await fetch(apiUrl("/api/ai-chat/messages/stream"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/x-ndjson"
+        },
         signal: controller.signal,
         body: JSON.stringify({
           session_id: getSessionId(),
@@ -163,30 +185,79 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
         })
       });
       if (!response.ok) throw new Error(await readError(response, "The memory guide could not answer."));
-      const payload = (await response.json()) as {
-        request_id: string;
-        message: string;
-        grounding_mode: GroundingMode;
-        sources: SourceCard[];
-      };
-      setTurns((current) => [
-        ...current,
-        {
-          id: makeId(),
-          role: "assistant",
-          content: payload.message,
-          request_id: payload.request_id,
-          grounding_mode: payload.grounding_mode,
-          sources: payload.sources
+      if (!response.body) throw new Error("The browser could not open the response stream.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let receivedFinal = false;
+
+      function processStreamEvent(event: ChatStreamEvent): void {
+        if (event.type === "status") {
+          setStreamStatus(event.message);
+          return;
         }
-      ]);
+
+        if (event.type === "delta") {
+          setStreamStatus("");
+          setTurns((current) =>
+            current.map((turn) =>
+              turn.id === assistantTurnId
+                ? { ...turn, content: turn.content + event.text }
+                : turn
+            )
+          );
+          return;
+        }
+
+        if (event.type === "final") {
+          receivedFinal = true;
+          setTurns((current) =>
+            current.map((turn) =>
+              turn.id === assistantTurnId
+                ? {
+                    ...turn,
+                    request_id: event.request_id,
+                    grounding_mode: event.grounding_mode,
+                    sources: event.sources
+                  }
+                : turn
+            )
+          );
+          return;
+        }
+
+        throw new Error(event.message);
+      }
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (value) buffer += decoder.decode(value, { stream: true });
+        if (done) buffer += decoder.decode();
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          processStreamEvent(JSON.parse(line) as ChatStreamEvent);
+        }
+
+        if (done) break;
+      }
+
+      if (buffer.trim()) {
+        processStreamEvent(JSON.parse(buffer) as ChatStreamEvent);
+      }
+      if (!receivedFinal) throw new Error("The response stream ended before the answer was finalized.");
     } catch (sendError) {
+      setTurns((current) => current.filter((turn) => turn.id !== assistantTurnId));
       if ((sendError as Error).name !== "AbortError") {
         setError(sendError instanceof Error ? sendError.message : "The memory guide could not answer.");
         setRetryMessage(message);
       }
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
+      setStreamStatus("");
       setSending(false);
     }
   }
@@ -353,7 +424,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                     ) : null}
                   </article>
                 ))}
-                {sending ? <div className="chat-typing" role="status">Looking through Ken's profile and shared memories<span>...</span></div> : null}
+                {sending && streamStatus ? <div className="chat-typing" role="status">{streamStatus}</div> : null}
               </div>
 
               {error ? <p className="status error">{error}</p> : null}

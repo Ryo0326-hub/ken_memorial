@@ -66,7 +66,7 @@ class OpenAIGateway:
                 ),
             }
         ]
-        response = self.client.responses.create(
+        stream = self.client.responses.create(
             model=settings.openai_chat_model,
             instructions=instructions,
             input=input_items,
@@ -83,5 +83,22 @@ class OpenAIGateway:
             max_output_tokens=350,
             safety_identifier=safety_identifier,
             store=False,
+            stream=True,
         )
-        return ModelChatOutput.model_validate_json(response.output_text)
+
+        output_parts: list[str] = []
+
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                output_parts.append(event.delta)
+            elif event.type == "response.failed":
+                error = getattr(event.response, "error", None)
+                message = getattr(error, "message", "OpenAI response generation failed")
+                raise RuntimeError(message)
+            elif event.type == "error":
+                raise RuntimeError(getattr(event, "message", str(event)))
+
+        output_text = "".join(output_parts)
+        if not output_text:
+            raise RuntimeError("OpenAI returned no response text")
+        return ModelChatOutput.model_validate_json(output_text)
