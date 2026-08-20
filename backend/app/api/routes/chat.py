@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -37,6 +38,11 @@ def encode_stream_event(event: dict) -> str:
         ensure_ascii=False,
         separators=(",", ":"),
     ) + "\n"
+
+
+def iter_answer_chunks(message: str) -> Iterator[str]:
+    """Yield complete words while preserving the answer's original spacing."""
+    yield from re.findall(r"\S+\s*|\s+", message)
 
 
 @router.get("/config", response_model=ChatConfig)
@@ -162,12 +168,12 @@ def post_chat_message_stream(
 
             # Only release answer text after the existing output moderation,
             # grounding, source, and anti-impersonation checks have passed.
-            chunk_size = 32
-            for index in range(0, len(result.message), chunk_size):
+            # Word-aligned events avoid visibly splitting a word in the UI.
+            for chunk in iter_answer_chunks(result.message):
                 yield encode_stream_event(
                     {
                         "type": "delta",
-                        "text": result.message[index : index + chunk_size],
+                        "text": chunk,
                     }
                 )
 

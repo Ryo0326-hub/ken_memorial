@@ -4,7 +4,7 @@ import json
 import unittest
 from types import SimpleNamespace
 
-from app.api.routes.chat import encode_stream_event
+from app.api.routes.chat import encode_stream_event, iter_answer_chunks
 from app.schemas.chat import GroundingMode, ModelChatOutput
 from app.services.ai.openai_gateway import OpenAIGateway
 
@@ -66,4 +66,15 @@ class AIStreamingTests(unittest.TestCase):
                 "type": "delta",
                 "text": "Ken enjoyed track.\nHe also liked friends.",
             },
+        )
+
+    def test_answer_chunks_preserve_text_and_word_boundaries(self) -> None:
+        message = "Ken enjoyed track.\nHe also loved friendly competition."
+
+        chunks = list(iter_answer_chunks(message))
+
+        self.assertEqual("".join(chunks), message)
+        self.assertEqual(
+            chunks,
+            ["Ken ", "enjoyed ", "track.\n", "He ", "also ", "loved ", "friendly ", "competition."],
         )

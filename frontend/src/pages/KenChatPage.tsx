@@ -26,6 +26,7 @@ type ChatTurn = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  pending?: boolean;
   request_id?: string;
   grounding_mode?: GroundingMode;
   sources?: SourceCard[];
@@ -46,6 +47,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 const SESSION_KEY = "ken_ask_about_chat_v2";
 const SESSION_ID_KEY = "ken_ask_about_session_id_v2";
 const NOTICE_KEY_PREFIX = "ken_ask_about_notice_";
+const WORD_REVEAL_DELAY_MS = 32;
 const ANSWER_BASIS_LABELS: Record<GroundingMode, string> = {
   profile: "Based on Ryo-approved Ken Profile",
   memory: "Based on shared memories",
@@ -73,10 +75,33 @@ function getSessionId(): string {
 function readTurns(): ChatTurn[] {
   try {
     const parsed = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? "[]") as ChatTurn[];
-    return Array.isArray(parsed) ? parsed.slice(-24) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((turn) => !turn.pending && turn.content.trim()).slice(-24)
+      : [];
   } catch {
     return [];
   }
+}
+
+function waitForWordReveal(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("The response was cancelled.", "AbortError"));
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      signal.removeEventListener("abort", handleAbort);
+      resolve();
+    }, WORD_REVEAL_DELAY_MS);
+
+    function handleAbort(): void {
+      window.clearTimeout(timeoutId);
+      reject(new DOMException("The response was cancelled.", "AbortError"));
+    }
+
+    signal.addEventListener("abort", handleAbort, { once: true });
+  });
 }
 
 async function readError(response: Response, fallback: string): Promise<string> {
@@ -110,7 +135,8 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
   }, []);
 
   useEffect(() => {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(turns.slice(-24)));
+    const completedTurns = turns.filter((turn) => !turn.pending && turn.content.trim());
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(completedTurns.slice(-24)));
   }, [turns]);
 
   async function loadConfig(): Promise<void> {
@@ -160,7 +186,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
     setTurns((current) => [
       ...current,
       userTurn,
-      { id: assistantTurnId, role: "assistant", content: "" }
+      { id: assistantTurnId, role: "assistant", content: "", pending: true }
     ]);
     setDraft("");
     setError("");
@@ -192,7 +218,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
       let buffer = "";
       let receivedFinal = false;
 
-      function processStreamEvent(event: ChatStreamEvent): void {
+      async function processStreamEvent(event: ChatStreamEvent): Promise<void> {
         if (event.type === "status") {
           setStreamStatus(event.message);
           return;
@@ -207,6 +233,12 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                 : turn
             )
           );
+          // Deliberately yield between word events. Some production proxies
+          // coalesce streamed network chunks; pacing here keeps the reveal
+          // progressive even when several NDJSON records arrive together.
+          if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            await waitForWordReveal(controller.signal);
+          }
           return;
         }
 
@@ -217,6 +249,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
               turn.id === assistantTurnId
                 ? {
                     ...turn,
+                    pending: false,
                     request_id: event.request_id,
                     grounding_mode: event.grounding_mode,
                     sources: event.sources
@@ -239,14 +272,14 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
         buffer = lines.pop() ?? "";
         for (const line of lines) {
           if (!line.trim()) continue;
-          processStreamEvent(JSON.parse(line) as ChatStreamEvent);
+          await processStreamEvent(JSON.parse(line) as ChatStreamEvent);
         }
 
         if (done) break;
       }
 
       if (buffer.trim()) {
-        processStreamEvent(JSON.parse(buffer) as ChatStreamEvent);
+        await processStreamEvent(JSON.parse(buffer) as ChatStreamEvent);
       }
       if (!receivedFinal) throw new Error("The response stream ended before the answer was finalized.");
     } catch (sendError) {
@@ -386,9 +419,18 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
 
               <div className="chat-transcript" aria-live="polite">
                 {turns.map((turn) => (
-                  <article key={turn.id} className={`chat-message chat-message--${turn.role}`}>
+                  <article
+                    key={turn.id}
+                    className={`chat-message chat-message--${turn.role}${turn.pending ? " chat-message--pending" : ""}`}
+                  >
                     <span className="chat-message-label">{turn.role === "user" ? "You" : "AI memory guide"}</span>
-                    <p>{turn.content}</p>
+                    {turn.content ? <p>{turn.content}</p> : null}
+                    {turn.pending && !turn.content ? (
+                      <p className="chat-stream-status" role="status">
+                        {(streamStatus || "Starting...").replace(/\.{3}$/, "")}
+                        <span className="chat-stream-dots" aria-hidden="true">...</span>
+                      </p>
+                    ) : null}
                     {turn.role === "assistant" && turn.grounding_mode ? (
                       <span className={`chat-answer-basis chat-answer-basis--${turn.grounding_mode}`}>
                         {ANSWER_BASIS_LABELS[turn.grounding_mode]}
@@ -424,7 +466,6 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                     ) : null}
                   </article>
                 ))}
-                {sending && streamStatus ? <div className="chat-typing" role="status">{streamStatus}</div> : null}
               </div>
 
               {error ? <p className="status error">{error}</p> : null}
