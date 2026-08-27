@@ -1119,7 +1119,7 @@ textarea {
 }
 
 .style-picker-head h3 {
-  margin: 0;
+  margin: 0 0 0.65rem;
 }
 
 .style-picker-head p {
@@ -2036,8 +2036,7 @@ textarea {
 }
 
 .memory-paper__input-label textarea:focus {
-  outline: 2px solid rgba(111, 131, 99, 0.38);
-  outline-offset: 10px;
+  outline: none;
 }
 
 .memory-sticker-workbench {
@@ -2168,7 +2167,7 @@ textarea {
 }
 
 .memory-paper--compact {
-  min-height: 360px;
+  min-height: 260px;
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
@@ -2178,7 +2177,7 @@ textarea {
 }
 
 .memory-paper--compact .memory-paper__writing {
-  padding: 4.2rem 3.3rem 3.5rem;
+  padding: 2.8rem 2.6rem 2.2rem;
 }
 
 .memory-paper--compact .memory-paper__text {
@@ -2187,13 +2186,53 @@ textarea {
   font-size: 1rem;
   line-height: 1.65;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.memory-wall-card--tall .memory-paper--compact {
+  min-height: 360px;
+}
+
+.memory-wall-card--tall {
+  align-self: stretch;
+}
+
+.memory-wall-card--tall .memory-wall-card__open,
+.memory-wall-card--tall .memory-paper--compact {
+  height: 100%;
+}
+
+.memory-wall-card--tall .memory-paper--compact .memory-paper__writing {
+  padding: 4.2rem 3.3rem 3.5rem;
+}
+
+.memory-wall-card--tall .memory-paper--compact .memory-paper__text {
   -webkit-line-clamp: 7;
 }
 
-.memory-wall-card__meta {
-  padding: 0.75rem 0.4rem 0;
-  color: var(--muted);
+.memory-wall-card__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.memory-wall-card__footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  color: #655d55;
+  font-family: var(--font-handwritten, "Bradley Hand", "Segoe Print", cursive);
   font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.memory-wall-card__footer time {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .loading-memory-paper {

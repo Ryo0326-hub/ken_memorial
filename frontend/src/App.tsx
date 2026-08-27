@@ -668,8 +668,11 @@ function TributesPage() {
             const noteTone = normalizeStickyNoteColor(tribute.sticky_note_color);
             const imageUrl = getTributeImageUrl(tribute);
             if (tribute.type === "memory_recollection") {
+              const memoryCardClassName = imageUrl
+                ? "memory-wall-card memory-wall-card--tall note-double-row"
+                : "memory-wall-card";
               return (
-                <article className="memory-wall-card" key={tribute.id}>
+                <article className={memoryCardClassName} key={tribute.id}>
                   {tribute.is_featured ? <span className="chip feature">Featured</span> : null}
                   <button
                     type="button"
@@ -682,16 +685,22 @@ function TributesPage() {
                       theme={tribute.paper_theme ?? "plain"}
                       decorations={tribute.decorations ?? []}
                       photoUrl={imageUrl}
-                      content={toExcerpt(tribute.content, 220)}
-                    />
-                    <span className="memory-wall-card__meta">{tribute.public_author_label} · {toPostedDateLabel(tribute.submitted_at)}</span>
+                    >
+                      <div className="memory-wall-card__content">
+                        <p className="memory-paper__text">{toExcerpt(tribute.content, 220)}</p>
+                        <div className="memory-wall-card__footer">
+                          <span>- {tribute.public_author_label}</span>
+                          <time dateTime={tribute.submitted_at}>{toPostedDateLabel(tribute.submitted_at)}</time>
+                        </div>
+                      </div>
+                    </MemoryPaper>
                   </button>
                 </article>
               );
             }
             return (
               <article
-                className={`tribute-card note-${noteTone} pen-${tribute.pen_style}`}
+                className={`tribute-card note-${noteTone} pen-${tribute.pen_style}${imageUrl ? " note-double-row" : ""}`}
                 key={tribute.id}
                 style={toStickyNoteStyle(tribute.sticky_note_color)}
               >
