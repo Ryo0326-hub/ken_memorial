@@ -42,7 +42,7 @@ class PublicTributePerformanceTest(unittest.TestCase):
     def create_public_tribute(self, image_data_url: str | None = None) -> str:
         with self.session_factory() as db:
             tribute = TributeModel(
-                type=TributeType.birthday,
+                type=TributeType.message,
                 title="A bright memory",
                 content="A warm birthday memory that is long enough to pass validation.",
                 display_mode=DisplayMode.named,

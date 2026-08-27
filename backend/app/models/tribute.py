@@ -1,7 +1,10 @@
 from datetime import date, datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, Index, Integer, String, Text
+from typing import Any
+
+from sqlalchemy import JSON, Boolean, Date, DateTime, Enum, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -10,6 +13,7 @@ from app.schemas.tribute import (
     AIUseStatus,
     DisplayMode,
     PenStyle,
+    PaperTheme,
     StickyNoteColor,
     TributeStatus,
     TributeType,
@@ -25,7 +29,7 @@ class TributeModel(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     type: Mapped[TributeType] = mapped_column(
-        Enum(TributeType, name="tribute_type", native_enum=False), nullable=False
+        Enum(TributeType, name="tribute_type", native_enum=False, length=32), nullable=False
     )
     title: Mapped[str | None] = mapped_column(String(140), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -46,6 +50,16 @@ class TributeModel(Base):
         Enum(PenStyle, name="pen_style", native_enum=False),
         nullable=False,
         default=PenStyle.classic,
+    )
+    paper_theme: Mapped[PaperTheme] = mapped_column(
+        Enum(PaperTheme, name="paper_theme", native_enum=False),
+        nullable=False,
+        default=PaperTheme.plain,
+    )
+    decorations: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"),
+        nullable=False,
+        default=list,
     )
     public_display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     visibility: Mapped[Visibility] = mapped_column(

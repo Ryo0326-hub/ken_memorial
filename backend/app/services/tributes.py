@@ -17,6 +17,7 @@ from app.schemas.tribute import (
     Visibility,
     AIConsentBasis,
     AIUseStatus,
+    PaperTheme,
 )
 
 
@@ -40,6 +41,8 @@ def create_submission(db: Session, payload: SubmissionCreate) -> TributeModel:
         image_data_url=payload.image_data_url,
         sticky_note_color=payload.sticky_note_color,
         pen_style=payload.pen_style,
+        paper_theme=payload.paper_theme,
+        decorations=[item.model_dump(mode="json") for item in payload.decorations],
         public_display_name=display_name,
         status=TributeStatus.pending,
         visibility=Visibility.public,
@@ -104,6 +107,8 @@ def list_public_tributes(
         TributeModel.occasion_date,
         TributeModel.sticky_note_color,
         TributeModel.pen_style,
+        TributeModel.paper_theme,
+        TributeModel.decorations,
         TributeModel.public_display_name,
         TributeModel.status,
         TributeModel.visibility,
@@ -210,6 +215,23 @@ def set_featured(db: Session, tribute: TributeModel, is_featured: bool) -> Tribu
 
 
 def apply_admin_patch(db: Session, tribute: TributeModel, payload: AdminTributePatch) -> TributeModel:
+    candidate_content = payload.content.strip() if payload.content is not None else tribute.content
+    candidate_title = payload.title if payload.title is not None else tribute.title
+    candidate_theme = payload.paper_theme or tribute.paper_theme
+    candidate_decorations = (
+        [item.model_dump(mode="json") for item in payload.decorations]
+        if payload.decorations is not None
+        else tribute.decorations
+    )
+    if tribute.type == TributeType.message and len(candidate_content) > 1500:
+        raise ValueError("messages must be 1500 characters or fewer")
+    if tribute.type == TributeType.message and (
+        candidate_theme != PaperTheme.plain or candidate_decorations
+    ):
+        raise ValueError("memory paper styling is only available for memory recollections")
+    if tribute.type == TributeType.memory_recollection and (candidate_title or "").strip():
+        raise ValueError("memory recollections do not use a separate title")
+
     if payload.title is not None:
         tribute.title = payload.title.strip() or None
     if payload.content is not None:
@@ -224,6 +246,10 @@ def apply_admin_patch(db: Session, tribute: TributeModel, payload: AdminTributeP
         tribute.occasion_date = payload.occasion_date
     if "image_data_url" in payload.model_fields_set:
         tribute.image_data_url = payload.image_data_url
+    if payload.paper_theme is not None:
+        tribute.paper_theme = payload.paper_theme
+    if payload.decorations is not None:
+        tribute.decorations = [item.model_dump(mode="json") for item in payload.decorations]
 
     if payload.moderation_notes is not None:
         tribute.moderation_notes = payload.moderation_notes.strip() or None

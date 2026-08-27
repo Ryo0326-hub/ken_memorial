@@ -10,6 +10,7 @@ interface ParticleButtonProps extends ButtonProps {
   onSuccess?: () => void;
   successDuration?: number;
   icon?: React.ReactNode;
+  showIcon?: boolean;
 }
 
 function resolveParticleToneClass(variant: ButtonProps["variant"] | undefined): string {
@@ -26,6 +27,7 @@ function ParticleButton({
   successDuration = 460,
   className,
   icon,
+  showIcon = true,
   disabled,
   ...props
 }: ParticleButtonProps) {
@@ -75,9 +77,11 @@ function ParticleButton({
         <span className="particle-button__sheen" aria-hidden="true" />
         <span className="particle-button__glow" aria-hidden="true" />
         <span className="particle-button__label">{children}</span>
-        <span className="particle-button__icon" aria-hidden="true">
-          {icon ?? <Sparkles className="particle-button__svg" />}
-        </span>
+        {showIcon ? (
+          <span className="particle-button__icon" aria-hidden="true">
+            {icon ?? <Sparkles className="particle-button__svg" />}
+          </span>
+        ) : null}
       </Button>
     </span>
   );

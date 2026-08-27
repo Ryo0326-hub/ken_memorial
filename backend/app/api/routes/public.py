@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.schemas.tribute import PublicTribute, TributeType
+from app.schemas.tribute import PublicTribute, TributeType, normalize_tribute_type
 from app.services.tributes import get_public_by_id, get_public_image_data, list_public_tributes
 
 router = APIRouter(tags=["public"])
@@ -10,7 +10,7 @@ router = APIRouter(tags=["public"])
 
 @router.get("/tributes", response_model=list[PublicTribute])
 def get_tributes(
-    type: TributeType | None = None,
+    type: str | None = None,
     year: int | None = None,
     featured: bool = False,
     anonymous: bool | None = None,
@@ -19,7 +19,22 @@ def get_tributes(
     include_images: bool = True,
     db: Session = Depends(get_db),
 ) -> list[PublicTribute]:
-    return list_public_tributes(db, type, year, anonymous, featured, page, page_size, include_images)
+    tribute_type: TributeType | None = None
+    if type is not None:
+        try:
+            tribute_type = TributeType(normalize_tribute_type(type))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Unknown tribute type") from exc
+    return list_public_tributes(
+        db,
+        tribute_type,
+        year,
+        anonymous,
+        featured,
+        page,
+        page_size,
+        include_images,
+    )
 
 
 @router.get("/tributes/{tribute_id}/image", response_class=Response)

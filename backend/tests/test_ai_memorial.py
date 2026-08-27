@@ -26,6 +26,7 @@ from app.schemas.tribute import (
     AIUseStatus,
     DisplayMode,
     PenStyle,
+    PaperTheme,
     PublicTribute,
     StickyNoteColor,
     SubmissionCreate,
@@ -64,7 +65,7 @@ def session_factory():
 
 def make_tribute(**overrides) -> TributeModel:
     values = {
-        "type": TributeType.birthday,
+        "type": TributeType.message,
         "title": "A shared afternoon",
         "content": "A sufficiently long approved public tribute about a shared afternoon.",
         "display_mode": DisplayMode.anonymous,
@@ -72,6 +73,8 @@ def make_tribute(**overrides) -> TributeModel:
         "public_display_name": "Anonymous",
         "sticky_note_color": StickyNoteColor.mint,
         "pen_style": PenStyle.classic,
+        "paper_theme": PaperTheme.plain,
+        "decorations": [],
         "status": TributeStatus.approved,
         "visibility": Visibility.public,
         "ai_consent": True,
@@ -132,7 +135,7 @@ def test_submission_ai_consent_is_separate_and_defaults_off(session_factory) -> 
         ordinary = create_submission(
             db,
             SubmissionCreate(
-                type=TributeType.birthday,
+                type=TributeType.message,
                 content="A birthday message that is long enough to submit.",
                 display_mode=DisplayMode.named,
                 submitted_name="Ryo",
@@ -141,7 +144,7 @@ def test_submission_ai_consent_is_separate_and_defaults_off(session_factory) -> 
         opted_in = create_submission(
             db,
             SubmissionCreate(
-                type=TributeType.birthday,
+                type=TributeType.message,
                 content="Another birthday message that is long enough to submit.",
                 display_mode=DisplayMode.named,
                 submitted_name="Ryo",

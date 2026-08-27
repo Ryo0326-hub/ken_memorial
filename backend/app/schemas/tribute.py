@@ -7,8 +7,20 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validat
 
 
 class TributeType(str, Enum):
-    birthday = "birthday"
-    yearly_letter = "yearly_letter"
+    message = "message"
+    memory_recollection = "memory_recollection"
+
+
+LEGACY_TRIBUTE_TYPE_ALIASES = {
+    "birthday": TributeType.message,
+    "yearly_letter": TributeType.message,
+}
+
+
+def normalize_tribute_type(value: object) -> object:
+    if isinstance(value, str):
+        return LEGACY_TRIBUTE_TYPE_ALIASES.get(value, value)
+    return value
 
 
 class DisplayMode(str, Enum):
@@ -56,6 +68,36 @@ class PenStyle(str, Enum):
     gel = "gel"
 
 
+class PaperTheme(str, Enum):
+    plain = "plain"
+    wildflower_corners = "wildflower_corners"
+    eucalyptus_frame = "eucalyptus_frame"
+    lavender_edge = "lavender_edge"
+
+
+class MemorySticker(str, Enum):
+    daisy = "daisy"
+    forget_me_not = "forget_me_not"
+    lavender_sprig = "lavender_sprig"
+    fern = "fern"
+    butterfly = "butterfly"
+    white_dove = "white_dove"
+    small_heart = "small_heart"
+    warm_star = "warm_star"
+    photo = "photo"
+
+
+class MemoryDecoration(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instance_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    asset: MemorySticker
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    scale: float = Field(ge=0.65, le=1.35)
+    rotation: float = Field(ge=-30, le=30)
+
+
 class SubmissionCreate(BaseModel):
     type: TributeType
     title: str | None = Field(default=None, max_length=140)
@@ -68,15 +110,37 @@ class SubmissionCreate(BaseModel):
     image_data_url: str | None = Field(default=None, max_length=4_500_000)
     sticky_note_color: StickyNoteColor = StickyNoteColor.sunshine
     pen_style: PenStyle = PenStyle.classic
+    paper_theme: PaperTheme = PaperTheme.plain
+    decorations: list[MemoryDecoration] = Field(default_factory=list, max_length=6)
     ai_consent: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_type(cls, value: object) -> object:
+        if isinstance(value, dict) and "type" in value:
+            return {**value, "type": normalize_tribute_type(value["type"])}
+        return value
 
     @model_validator(mode="after")
     def validate_submission(self) -> "SubmissionCreate":
-        if self.type == TributeType.birthday and len(self.content.strip()) > 1500:
-            raise ValueError("birthday messages must be 1500 characters or fewer")
+        if self.type == TributeType.message:
+            if len(self.content.strip()) > 1500:
+                raise ValueError("messages must be 1500 characters or fewer")
+            if self.paper_theme != PaperTheme.plain or self.decorations:
+                raise ValueError("memory paper styling is only available for memory recollections")
 
-        if self.type == TributeType.yearly_letter and len(self.content.strip()) < 50:
-            raise ValueError("letters must be at least 50 characters")
+        if self.type == TributeType.memory_recollection and (self.title or "").strip():
+            raise ValueError("memory recollections do not use a separate title")
+
+        if self.type == TributeType.memory_recollection:
+            photo_decorations = [item for item in self.decorations if item.asset == MemorySticker.photo]
+            sticker_decorations = [item for item in self.decorations if item.asset != MemorySticker.photo]
+            if len(photo_decorations) > 1:
+                raise ValueError("memory recollections can use only one photo decoration")
+            if len(sticker_decorations) > 5:
+                raise ValueError("memory recollections can use up to five stickers")
+            if photo_decorations and not self.image_data_url:
+                raise ValueError("photo decorations require an uploaded image")
 
         if self.image_data_url:
             if not self.image_data_url.startswith("data:image/") or ";base64," not in self.image_data_url:
@@ -113,6 +177,8 @@ class Tribute(BaseModel):
     image_data_url: str | None = None
     sticky_note_color: StickyNoteColor
     pen_style: PenStyle
+    paper_theme: PaperTheme = PaperTheme.plain
+    decorations: list[MemoryDecoration] = Field(default_factory=list)
     public_display_name: str
     status: TributeStatus
     visibility: Visibility
@@ -157,6 +223,8 @@ class PublicTribute(BaseModel):
     image_data_url: str | None = None
     sticky_note_color: StickyNoteColor
     pen_style: PenStyle
+    paper_theme: PaperTheme = PaperTheme.plain
+    decorations: list[MemoryDecoration] = Field(default_factory=list)
     public_display_name: str
     submitted_at: datetime
     is_featured: bool = False

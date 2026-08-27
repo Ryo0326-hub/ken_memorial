@@ -1,55 +1,27 @@
-import { CSSProperties, DragEvent, FormEvent, useEffect, useState } from "react";
-import { Ban, Check, EyeOff, House, ImageMinus, LogOut, Send } from "lucide-react";
+import { CSSProperties, DragEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Ban, Check, EyeOff, House, LogOut, Send } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
 import { AdminAiPanel } from "@/components/AdminAiPanel";
 import { KenChatPage } from "@/pages/KenChatPage";
+import { MemoryPaper } from "@/features/tributes/MemoryPaper";
+import { MemoryRecollectionEditor } from "@/features/tributes/MemoryRecollectionEditor";
+import { MemoryTributeDialog } from "@/features/tributes/MemoryTributeDialog";
+import {
+  AIConsentBasis,
+  AIUseStatus,
+  DisplayMode,
+  MemoryDecoration,
+  PAPER_THEMES,
+  PaperTheme,
+  PenStyle,
+  StickyNoteColor,
+  Tribute,
+  TributeStatus,
+  TributeType,
+  Visibility
+} from "@/features/tributes/types";
 import uploadIconSrc from "@/assets/upload-icon.png";
-
-type TributeType = "birthday" | "yearly_letter";
-type DisplayMode = "named" | "anonymous";
-type TributeStatus = "pending" | "approved" | "rejected" | "hidden";
-type Visibility = "public" | "private";
-type StickyNoteColor = "sky" | "mint" | "lavender";
-type PenStyle = "classic" | "marker" | "fountain" | "gel";
-type AIConsentBasis = "submitter_opt_in" | "contributor_confirmed" | "owner_authored";
-type AIUseStatus = "excluded" | "pending_review" | "included" | "index_error";
-
-type Tribute = {
-  id: string;
-  type: TributeType;
-  title: string | null;
-  content: string;
-  display_mode: DisplayMode;
-  submitted_name: string | null;
-  relationship_to_ken: string | null;
-  year_tag: number | null;
-  occasion_date: string | null;
-  image_data_url: string | null;
-  sticky_note_color: StickyNoteColor;
-  pen_style: PenStyle;
-  public_display_name: string;
-  status: TributeStatus;
-  visibility: Visibility;
-  moderation_notes: string | null;
-  submitted_at: string;
-  is_featured: boolean;
-  created_at: string;
-  updated_at: string;
-  approved_at: string | null;
-  has_image?: boolean;
-  is_anonymous: boolean;
-  public_author_label: string;
-  ai_consent: boolean;
-  ai_consent_policy_version: string | null;
-  ai_consent_at: string | null;
-  ai_consent_basis: AIConsentBasis | null;
-  ai_use_status: AIUseStatus;
-  ai_redacted_content: string | null;
-  ai_indexed_at: string | null;
-  ai_index_error: string | null;
-};
-
 type SubmissionFormState = {
   type: TributeType;
   title: string;
@@ -60,6 +32,8 @@ type SubmissionFormState = {
   image_name: string;
   sticky_note_color: StickyNoteColor;
   pen_style: PenStyle;
+  paper_theme: PaperTheme;
+  decorations: MemoryDecoration[];
   ai_consent: boolean;
 };
 
@@ -79,6 +53,8 @@ type AdminPatchForm = {
   moderation_status: TributeStatus;
   featured: boolean;
   image_data_url: string | null;
+  paper_theme: PaperTheme;
+  decorations: MemoryDecoration[];
   ai_consent: boolean;
   ai_consent_basis: AIConsentBasis | "";
   ai_use_status: AIUseStatus;
@@ -86,7 +62,7 @@ type AdminPatchForm = {
 };
 
 const INITIAL_FORM: SubmissionFormState = {
-  type: "birthday",
+  type: "message",
   title: "",
   content: "",
   display_mode: "named",
@@ -95,7 +71,14 @@ const INITIAL_FORM: SubmissionFormState = {
   image_name: "",
   sticky_note_color: "mint",
   pen_style: "classic",
+  paper_theme: "plain",
+  decorations: [],
   ai_consent: false
+};
+
+const INITIAL_MEMORY_FORM: SubmissionFormState = {
+  ...INITIAL_FORM,
+  type: "memory_recollection"
 };
 
 const INITIAL_FILTERS: TributeFilters = {
@@ -106,6 +89,7 @@ const INITIAL_FILTERS: TributeFilters = {
 const ADMIN_TOKEN_KEY = "ken_admin_token";
 const TRIBUTE_STYLE_OVERRIDES_KEY = "ken_tribute_style_overrides";
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MEMORY_PHOTO_DECORATION_ID = "memory-photo";
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 const NOTE_COLORS: Array<{ value: StickyNoteColor; label: string; className: string }> = [
   { value: "sky", label: "Sky", className: "note-sky" },
@@ -119,6 +103,38 @@ const PEN_STYLES: Array<{ value: PenStyle; label: string; className: string; pre
   { value: "fountain", label: "Fountain Pen", className: "pen-fountain", preview: "Elegant flow" }
 ];
 type TributeStyleOverrides = Record<string, { sticky_note_color: StickyNoteColor; pen_style: PenStyle }>;
+
+function withMemoryPhotoDecoration(
+  decorations: MemoryDecoration[],
+  hasPhoto: boolean
+): MemoryDecoration[] {
+  const existingPhoto = decorations.find((item) => item.asset === "photo");
+  if (!hasPhoto) {
+    return existingPhoto ? decorations.filter((item) => item.asset !== "photo") : decorations;
+  }
+  if (existingPhoto) return decorations;
+  return [
+    ...decorations,
+    {
+      instance_id: MEMORY_PHOTO_DECORATION_ID,
+      asset: "photo",
+      x: 0.78,
+      y: 0.2,
+      scale: 1,
+      rotation: 4
+    }
+  ];
+}
+
+function normalizeTribute(tribute: Tribute): Tribute {
+  const rawType = tribute.type as string;
+  return {
+    ...tribute,
+    type: rawType === "birthday" || rawType === "yearly_letter" ? "message" : tribute.type,
+    paper_theme: tribute.paper_theme ?? "plain",
+    decorations: Array.isArray(tribute.decorations) ? tribute.decorations : []
+  };
+}
 
 function normalizeStickyNoteColor(value: string | null | undefined): StickyNoteColor {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -239,13 +255,13 @@ function getTributeImageUrl(tribute: Tribute): string | null {
 }
 
 function toDisplayType(type: TributeType): string {
-  return type === "birthday" ? "Birthday Message" : "Letter";
+  return type === "message" ? "Message" : "Memory Recollection";
 }
 
 function getMessagePlaceholder(type: TributeType): string {
-  return type === "birthday"
-    ? "Happy Birthday Ken..."
-    : "Dear Ken, ...";
+  return type === "message"
+    ? "Anything…"
+    : "Write down a memory you shared with Ken…";
 }
 
 function toExcerpt(content: string, max = 180): string {
@@ -468,7 +484,7 @@ function HomePage() {
   return (
     <>
       <section className="hero-panel reveal">
-        <h1>Ken's digital album</h1>
+        <h1>Dear Ken 🕊️</h1>
       </section>
 
       <div id="home-tribute-wall" className="home-tribute-wall">
@@ -519,6 +535,8 @@ function TributesPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [selectedMemory, setSelectedMemory] = useState<Tribute | null>(null);
+  const closeMemoryDialog = useCallback(() => setSelectedMemory(null), []);
 
   useEffect(() => {
     void loadTributes();
@@ -546,7 +564,7 @@ function TributesPage() {
 
       const loaded = (await response.json()) as Tribute[];
       const styleOverrides = readTributeStyleOverrides();
-      setTributes(loaded.map((tribute) => withStyleOverrides(tribute, styleOverrides)));
+      setTributes(loaded.map((tribute) => withStyleOverrides(normalizeTribute(tribute), styleOverrides)));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Unexpected error");
     } finally {
@@ -570,8 +588,8 @@ function TributesPage() {
             }
           >
             <option value="all">All Types</option>
-            <option value="birthday">Birthday Messages</option>
-            <option value="yearly_letter">Letters</option>
+            <option value="message">Messages</option>
+            <option value="memory_recollection">Memory Recollections</option>
           </select>
         </label>
 
@@ -605,35 +623,75 @@ function TributesPage() {
       )}
       {error && <p className="status error">{error}</p>}
       {!loading && tributes.length === 0 && (
-        <p className="empty">No approved tributes match this filter yet.</p>
+        <p className="empty">
+          {filters.type === "memory_recollection"
+            ? "No memory recollections have been shared here yet."
+            : filters.type === "message"
+              ? "No messages match this filter yet."
+              : "No approved tributes match this filter yet."}
+        </p>
       )}
 
       <div className="tribute-grid">
         {loading ? (
-          LOADING_TRIBUTE_PLACEHOLDERS.map((noteTone, index) => (
-            <article
-              aria-hidden="true"
-              className={`tribute-card loading-tribute-card note-${noteTone} pen-classic`}
-              key={`loading-tribute-${noteTone}-${index}`}
-              style={toStickyNoteStyle(noteTone)}
-            >
-              <div className="loading-note-lines">
-                <span className="loading-note-line loading-note-line--title" />
-                <span className="loading-note-line" />
-                <span className="loading-note-line loading-note-line--short" />
-                <span className="loading-note-line loading-note-line--meta" />
-              </div>
-            </article>
-          ))
+          LOADING_TRIBUTE_PLACEHOLDERS.map((noteTone, index) => {
+            const memoryPlaceholder = filters.type === "memory_recollection" || (filters.type === "all" && index % 2 === 1);
+            return memoryPlaceholder ? (
+              <article aria-hidden="true" className="memory-wall-card loading-memory-card" key={`loading-memory-${index}`}>
+                <div className="memory-paper memory-paper--plain memory-paper--compact loading-memory-paper">
+                  <div className="loading-note-lines">
+                    <span className="loading-note-line loading-note-line--title" />
+                    <span className="loading-note-line" />
+                    <span className="loading-note-line loading-note-line--short" />
+                    <span className="loading-note-line loading-note-line--meta" />
+                  </div>
+                </div>
+              </article>
+            ) : (
+              <article
+                aria-hidden="true"
+                className={`tribute-card loading-tribute-card note-${noteTone} pen-classic`}
+                key={`loading-tribute-${noteTone}-${index}`}
+                style={toStickyNoteStyle(noteTone)}
+              >
+                <div className="loading-note-lines">
+                  <span className="loading-note-line loading-note-line--title" />
+                  <span className="loading-note-line" />
+                  <span className="loading-note-line loading-note-line--short" />
+                  <span className="loading-note-line loading-note-line--meta" />
+                </div>
+              </article>
+            );
+          })
         ) : (
           tributes.map((tribute) => {
             const noteTone = normalizeStickyNoteColor(tribute.sticky_note_color);
             const imageUrl = getTributeImageUrl(tribute);
+            if (tribute.type === "memory_recollection") {
+              return (
+                <article className="memory-wall-card" key={tribute.id}>
+                  {tribute.is_featured ? <span className="chip feature">Featured</span> : null}
+                  <button
+                    type="button"
+                    className="memory-wall-card__open"
+                    onClick={() => setSelectedMemory(tribute)}
+                    aria-label={`Open memory shared by ${tribute.public_author_label}`}
+                  >
+                    <MemoryPaper
+                      compact
+                      theme={tribute.paper_theme ?? "plain"}
+                      decorations={tribute.decorations ?? []}
+                      photoUrl={imageUrl}
+                      content={toExcerpt(tribute.content, 220)}
+                    />
+                    <span className="memory-wall-card__meta">{tribute.public_author_label} · {toPostedDateLabel(tribute.submitted_at)}</span>
+                  </button>
+                </article>
+              );
+            }
             return (
               <article
-                className={`tribute-card note-${noteTone} pen-${tribute.pen_style} ${
-                  tribute.type === "yearly_letter" && imageUrl ? "note-double-row" : ""
-                }`}
+                className={`tribute-card note-${noteTone} pen-${tribute.pen_style}`}
                 key={tribute.id}
                 style={toStickyNoteStyle(tribute.sticky_note_color)}
               >
@@ -680,20 +738,58 @@ function TributesPage() {
           </button>
         </div>
       )}
+      <MemoryTributeDialog
+        tribute={selectedMemory}
+        imageUrl={selectedMemory ? getTributeImageUrl(selectedMemory) : null}
+        onClose={closeMemoryDialog}
+        formatDate={toPostedDateLabel}
+      />
     </section>
   );
 }
 
 function SubmitPage() {
   const [form, setForm] = useState<SubmissionFormState>(INITIAL_FORM);
+  const draftsRef = useRef<Record<TributeType, SubmissionFormState>>({
+    message: INITIAL_FORM,
+    memory_recollection: INITIAL_MEMORY_FORM
+  });
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
   const [photoDragActive, setPhotoDragActive] = useState<boolean>(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  function clearPhoto(): void {
+    setForm((prev) => ({
+      ...prev,
+      image_data_url: null,
+      image_name: "",
+      decorations: withMemoryPhotoDecoration(prev.decorations, false)
+    }));
+  }
+
+  function switchCategory(type: TributeType): void {
+    if (type === form.type) return;
+    draftsRef.current[form.type] = form;
+    const saved = draftsRef.current[type];
+    setForm({
+      ...saved,
+      type,
+      display_mode: form.display_mode,
+      submitted_name: form.submitted_name,
+      image_data_url: form.image_data_url,
+      image_name: form.image_name,
+      decorations: type === "memory_recollection"
+        ? withMemoryPhotoDecoration(saved.decorations, Boolean(form.image_data_url))
+        : saved.decorations,
+      ai_consent: form.ai_consent
+    });
+  }
 
   async function handleImageSelection(file: File | null): Promise<void> {
     if (!file) {
-      setForm((prev) => ({ ...prev, image_data_url: null, image_name: "" }));
+      clearPhoto();
       return;
     }
 
@@ -709,7 +805,14 @@ function SubmitPage() {
 
     try {
       const dataUrl = await fileToDataUrl(file);
-      setForm((prev) => ({ ...prev, image_data_url: dataUrl, image_name: file.name }));
+      setForm((prev) => ({
+        ...prev,
+        image_data_url: dataUrl,
+        image_name: file.name,
+        decorations: prev.type === "memory_recollection"
+          ? withMemoryPhotoDecoration(prev.decorations, true)
+          : prev.decorations
+      }));
       setError("");
     } catch (imageError) {
       setError(imageError instanceof Error ? imageError.message : "Unable to process image");
@@ -761,13 +864,15 @@ function SubmitPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: form.type,
-          title: form.title.trim() || null,
+          title: form.type === "message" ? form.title.trim() || null : null,
           content: form.content,
           display_mode: form.display_mode,
           submitted_name: form.display_mode === "anonymous" ? null : form.submitted_name.trim(),
           image_data_url: form.image_data_url,
           sticky_note_color: form.sticky_note_color,
           pen_style: form.pen_style,
+          paper_theme: "plain",
+          decorations: form.type === "memory_recollection" ? form.decorations : [],
           ai_consent: form.ai_consent
         })
       });
@@ -777,11 +882,12 @@ function SubmitPage() {
       }
 
       const created = (await response.json()) as Tribute;
-      if (created.id) {
+      if (created.id && form.type === "message") {
         writeTributeStyleOverride(created.id, form.sticky_note_color, form.pen_style);
       }
 
       setForm(INITIAL_FORM);
+      draftsRef.current = { message: INITIAL_FORM, memory_recollection: INITIAL_MEMORY_FORM };
       setSuccess("Thank you. Your tribute has been submitted and is awaiting moderation.");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unexpected error");
@@ -794,7 +900,6 @@ function SubmitPage() {
     <section className="content-panel reveal">
       <div className="section-head">
         <h2>Leave a Tribute</h2>
-        <p>Share a birthday message or letter for Ken.</p>
       </div>
 
       <form className="tribute-form" onSubmit={handleSubmit}>
@@ -803,22 +908,24 @@ function SubmitPage() {
             Tribute Type
             <select
               value={form.type}
-              onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as TributeType }))}
+              onChange={(event) => switchCategory(event.target.value as TributeType)}
             >
-              <option value="birthday">Birthday Message</option>
-              <option value="yearly_letter">Letter</option>
+              <option value="message">Message</option>
+              <option value="memory_recollection">Memory Recollection</option>
             </select>
           </label>
 
-          <label>
-            Title (Optional)
-            <input
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              maxLength={140}
-              placeholder="Optional title"
-            />
-          </label>
+          {form.type === "message" ? (
+            <label>
+              Title (Optional)
+              <input
+                value={form.title}
+                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                maxLength={140}
+                placeholder="Optional title"
+              />
+            </label>
+          ) : null}
 
           <label>
             Display Preference
@@ -849,11 +956,10 @@ function SubmitPage() {
           )}
         </div>
 
-        <div className="style-picker-row">
+        {form.type === "message" ? <div className="style-picker-row">
           <div className="style-picker-section">
             <div className="style-picker-head">
               <h3>Pick Your Sticky Note Color</h3>
-              <p>Choose the note color your tribute will appear on.</p>
             </div>
             <div className="note-color-grid" role="radiogroup" aria-label="Sticky note color">
               {NOTE_COLORS.map((noteColor) => (
@@ -875,7 +981,6 @@ function SubmitPage() {
           <div className="style-picker-section">
             <div className="style-picker-head">
               <h3>Choose Your Pen</h3>
-              <p>Select the writing style that will be used on your tribute card.</p>
             </div>
             <div className="pen-grid" role="radiogroup" aria-label="Pen style">
               {PEN_STYLES.map((pen) => (
@@ -892,25 +997,39 @@ function SubmitPage() {
               ))}
             </div>
           </div>
-        </div>
+        </div> : null}
 
-        <label>
-          Message
-          <textarea
-            className={`tribute-message-input note-${form.sticky_note_color} pen-${form.pen_style}`}
-            style={toStickyNoteStyle(form.sticky_note_color)}
-            value={form.content}
-            onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
-            minLength={10}
-            maxLength={5000}
-            required
-            placeholder={getMessagePlaceholder(form.type)}
+        {form.type === "message" ? (
+          <label>
+            Message
+            <textarea
+              className={`tribute-message-input note-${form.sticky_note_color} pen-${form.pen_style}`}
+              style={toStickyNoteStyle(form.sticky_note_color)}
+              value={form.content}
+              onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
+              minLength={10}
+              maxLength={1500}
+              required
+              placeholder={getMessagePlaceholder(form.type)}
+            />
+            <span className="character-count">{form.content.length} / 1,500</span>
+          </label>
+        ) : (
+          <MemoryRecollectionEditor
+            content={form.content}
+            decorations={form.decorations}
+            photoUrl={form.image_data_url}
+            onContentChange={(content) => setForm((prev) => ({ ...prev, content }))}
+            onDecorationsChange={(decorations) => setForm((prev) => ({ ...prev, decorations }))}
+            onRemovePhoto={clearPhoto}
           />
-        </label>
+        )}
 
-        <div className="photo-upload-field">
+        <div className={`photo-upload-field${form.type === "memory_recollection" ? " memory-photo-field" : ""}`}>
           <div className="photo-upload-heading">
-            <span className="photo-upload-label">Optional Photo</span>
+            <span className="photo-upload-label">
+              {form.type === "memory_recollection" ? "Photo sticker (optional)" : "Optional Photo"}
+            </span>
             <span className="photo-upload-limit">Max 1 image · 3MB</span>
           </div>
           <div
@@ -922,59 +1041,63 @@ function SubmitPage() {
             onDragLeave={handlePhotoDragLeave}
             onDrop={handlePhotoDrop}
           >
-            <label className="photo-drop-zone">
-              <input
-                className="photo-file-input"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => {
-                  void handleImageSelection(event.target.files?.[0] ?? null);
-                  event.currentTarget.value = "";
-                }}
-              />
+            <input
+              ref={photoInputRef}
+              className="photo-file-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Choose a photo"
+              onChange={(event) => {
+                void handleImageSelection(event.target.files?.[0] ?? null);
+                event.currentTarget.value = "";
+              }}
+            />
+            <div className="photo-upload-simple">
               <span className="upload-icon-shell" aria-hidden="true">
                 <img src={uploadIconSrc} alt="" className="upload-icon" />
               </span>
-              <span className="photo-upload-copy">
-                <span className="photo-upload-title">
-                  {form.image_data_url ? "Replace photo" : "Add a photo"}
-                </span>
-                <span className="photo-upload-help">
-                  {form.image_data_url ? form.image_name || "Selected image" : "Drag and drop or tap to choose"}
-                </span>
-                <span className="photo-upload-meta">JPEG, PNG, WEBP</span>
-              </span>
-              <span className="photo-upload-action">Choose</span>
-            </label>
-
-            {form.image_data_url ? (
-              <div className="photo-upload-preview submit-upload-preview">
+              {form.image_data_url && form.type === "message" ? (
                 <button
                   type="button"
-                  className="photo-frame submit-photo-frame"
-                  onClick={() => {
-                    if (form.image_data_url) {
-                      window.open(form.image_data_url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
+                  className="photo-upload-thumbnail"
+                  onClick={() => window.open(form.image_data_url ?? "", "_blank", "noopener,noreferrer")}
                   aria-label="Open selected image preview"
                 >
-                  <img src={form.image_data_url} alt="Selected tribute preview" className="framed-photo" />
+                  <img src={form.image_data_url} alt="Selected tribute preview" />
                 </button>
-                <div className="upload-meta">
-                  <p>{form.image_name || "Selected image"}</p>
+              ) : null}
+              <div className="photo-upload-copy">
+                <strong className="photo-upload-title">{form.image_data_url ? "Photo added" : "Add a photo"}</strong>
+                <span className="photo-upload-help">Drag and drop or tap to choose</span>
+                <span className="photo-upload-meta">
+                  {form.image_data_url ? form.image_name || "Selected image" : "JPEG, PNG or WEBP"}
+                </span>
+              </div>
+              <div className="photo-upload-actions">
+                <ParticleButton
+                  type="button"
+                  variant="soft"
+                  size="sm"
+                  className="action-button photo-upload-button"
+                  showIcon={false}
+                  onClick={() => photoInputRef.current?.click()}
+                >
+                  {form.image_data_url ? "Choose another" : "Choose photo"}
+                </ParticleButton>
+                {form.image_data_url ? (
                   <ParticleButton
                     type="button"
                     variant="soft"
                     size="sm"
-                    icon={<ImageMinus className="particle-button__svg" />}
-                    onClick={() => setForm((prev) => ({ ...prev, image_data_url: null, image_name: "" }))}
+                    className="action-button photo-upload-button"
+                    showIcon={false}
+                    onClick={clearPhoto}
                   >
-                    Remove Image
+                    Remove image
                   </ParticleButton>
-                </div>
+                ) : null}
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
 
@@ -991,7 +1114,6 @@ function SubmitPage() {
               processed by OpenAI and quoted in short source snippets.
             </span>
           </label>
-          <p>You can still submit the tribute without agreeing. This choice is separate from public wall display.</p>
         </div>
 
         <div className="privacy-note">
@@ -1124,6 +1246,7 @@ function AdminDashboardPage({
   onLogout: () => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<string>("pending");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | TributeType>("all");
   const [tributes, setTributes] = useState<Tribute[]>([]);
   const [selectedTribute, setSelectedTribute] = useState<Tribute | null>(null);
   const [patchForm, setPatchForm] = useState<AdminPatchForm | null>(null);
@@ -1138,6 +1261,19 @@ function AdminDashboardPage({
     }
     void loadAdminTributes();
   }, [token, statusFilter]);
+
+  useEffect(() => {
+    const visible = tributes.filter((tribute) => categoryFilter === "all" || tribute.type === categoryFilter);
+    if (!visible.length) {
+      setSelectedTribute(null);
+      setPatchForm(null);
+      return;
+    }
+    if (!selectedTribute || !visible.some((tribute) => tribute.id === selectedTribute.id)) {
+      setSelectedTribute(visible[0]);
+      setPatchForm(makePatchForm(visible[0]));
+    }
+  }, [categoryFilter, tributes, selectedTribute]);
 
   async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
     const response = await fetch(apiUrl(path), {
@@ -1168,7 +1304,7 @@ function AdminDashboardPage({
         throw new Error(await readErrorMessage(response, "Failed to load admin tributes"));
       }
 
-      const data = (await response.json()) as Tribute[];
+      const data = ((await response.json()) as Tribute[]).map(normalizeTribute);
       setTributes(data);
       if (data.length > 0) {
         setSelectedTribute(data[0]);
@@ -1220,6 +1356,8 @@ function AdminDashboardPage({
           moderation_status: patchForm.moderation_status,
           featured: patchForm.featured,
           image_data_url: patchForm.image_data_url,
+          paper_theme: patchForm.paper_theme,
+          decorations: patchForm.decorations,
           ai_consent: patchForm.ai_consent,
           ai_consent_basis: patchForm.ai_consent ? patchForm.ai_consent_basis || null : null,
           ai_redacted_content: patchForm.ai_redacted_content || null,
@@ -1231,7 +1369,7 @@ function AdminDashboardPage({
         throw new Error(await readErrorMessage(response, "Failed to save moderation changes"));
       }
 
-      const updated = (await response.json()) as Tribute;
+      const updated = normalizeTribute((await response.json()) as Tribute);
       setSelectedTribute(updated);
       setPatchForm(makePatchForm(updated));
       await loadAdminTributes();
@@ -1292,6 +1430,14 @@ function AdminDashboardPage({
             <option value="all">All</option>
           </select>
         </label>
+        <label>
+          Category
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as "all" | TributeType)}>
+            <option value="all">All categories</option>
+            <option value="message">Messages</option>
+            <option value="memory_recollection">Memory Recollections</option>
+          </select>
+        </label>
       </div>
 
       {loading && <p>Loading moderation queue...</p>}
@@ -1300,7 +1446,7 @@ function AdminDashboardPage({
       {!loading && (
         <div className="admin-grid">
           <div className="admin-list">
-            {tributes.map((tribute) => (
+            {tributes.filter((tribute) => categoryFilter === "all" || tribute.type === categoryFilter).map((tribute) => (
               <button
                 key={tribute.id}
                 type="button"
@@ -1310,7 +1456,7 @@ function AdminDashboardPage({
                   setPatchForm(makePatchForm(tribute));
                 }}
               >
-                <strong>{tribute.title || "Untitled Tribute"}</strong>
+                <strong>{tribute.title || (tribute.type === "memory_recollection" ? "Memory Recollection" : "Untitled Message")}</strong>
                 <span>{toDisplayType(tribute.type)}</span>
                 <span>{tribute.public_author_label}</span>
                 <span>Status: {tribute.status}</span>
@@ -1324,8 +1470,58 @@ function AdminDashboardPage({
               <h3>Moderate Tribute</h3>
               <p className="card-meta">ID: {selectedTribute.id}</p>
 
+              {selectedTribute.type === "memory_recollection" ? (
+                <div className="admin-memory-preview">
+                  <MemoryPaper
+                    theme={patchForm.paper_theme}
+                    decorations={patchForm.decorations}
+                    photoUrl={patchForm.image_data_url}
+                    content={patchForm.content}
+                  />
+                  <label>
+                    Paper Theme
+                    <select
+                      value={patchForm.paper_theme}
+                      onChange={(event) => setPatchForm((prev) => prev ? { ...prev, paper_theme: event.target.value as PaperTheme } : prev)}
+                    >
+                      {PAPER_THEMES.map((theme) => <option key={theme.value} value={theme.value}>{theme.label}</option>)}
+                    </select>
+                  </label>
+                  <div className="admin-decoration-list">
+                    <div>
+                      <strong>Decorations ({patchForm.decorations.length})</strong>
+                      {patchForm.decorations.length ? (
+                        <ParticleButton
+                          type="button"
+                          variant="soft"
+                          size="sm"
+                          className="action-button"
+                          showIcon={false}
+                          onClick={() => setPatchForm((prev) => prev ? { ...prev, decorations: [] } : prev)}
+                        >
+                          Clear all
+                        </ParticleButton>
+                      ) : null}
+                    </div>
+                    {patchForm.decorations.map((decoration) => (
+                      <ParticleButton
+                        key={decoration.instance_id}
+                        type="button"
+                        variant="soft"
+                        size="sm"
+                        className="action-button"
+                        showIcon={false}
+                        onClick={() => setPatchForm((prev) => prev ? { ...prev, decorations: prev.decorations.filter((item) => item.instance_id !== decoration.instance_id) } : prev)}
+                      >
+                        Remove {decoration.asset.replace(/_/g, " ")}
+                      </ParticleButton>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="field-grid">
-                <label>
+                {selectedTribute.type === "message" ? <label>
                   Title
                   <input
                     value={patchForm.title}
@@ -1333,7 +1529,7 @@ function AdminDashboardPage({
                       setPatchForm((prev) => (prev ? { ...prev, title: event.target.value } : prev))
                     }
                   />
-                </label>
+                </label> : null}
 
                 <label>
                   Relationship To Ken
@@ -1445,9 +1641,14 @@ function AdminDashboardPage({
                       type="button"
                       variant="soft"
                       size="sm"
-                      icon={<ImageMinus className="particle-button__svg" />}
+                      className="action-button photo-upload-button"
+                      showIcon={false}
                       onClick={() =>
-                        setPatchForm((prev) => (prev ? { ...prev, image_data_url: null } : prev))
+                        setPatchForm((prev) => prev ? {
+                          ...prev,
+                          image_data_url: null,
+                          decorations: prev.decorations.filter((item) => item.asset !== "photo")
+                        } : prev)
                       }
                     >
                       Remove Image
@@ -1585,6 +1786,8 @@ function makePatchForm(tribute: Tribute): AdminPatchForm {
     moderation_status: tribute.status,
     featured: tribute.is_featured,
     image_data_url: tribute.image_data_url,
+    paper_theme: tribute.paper_theme ?? "plain",
+    decorations: tribute.decorations ?? [],
     ai_consent: tribute.ai_consent ?? false,
     ai_consent_basis: tribute.ai_consent_basis ?? "",
     ai_use_status: tribute.ai_use_status ?? "excluded",

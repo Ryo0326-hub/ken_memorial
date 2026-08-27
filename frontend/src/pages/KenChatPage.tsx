@@ -339,10 +339,6 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
   );
   const remaining = (config?.max_message_characters ?? 1000) - draft.length;
 
-  if (loading) {
-    return <section className="content-panel chat-page"><p>Opening Ask About Ken...</p></section>;
-  }
-
   return (
     <section className="content-panel reveal chat-page">
       <div className="chat-heading">
@@ -357,6 +353,13 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
           Start over
         </ParticleButton>
       </div>
+
+      {loading ? (
+        <p className="chat-connection-status" role="status" aria-live="polite">
+          Connecting to the memory guide
+          <span className="chat-stream-dots" aria-hidden="true">...</span>
+        </p>
+      ) : null}
 
       {!acknowledged && config ? (
         <div className="chat-notice" role="dialog" aria-labelledby="chat-notice-title">
@@ -395,13 +398,77 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
         </div>
       ) : null}
 
+      {turns.length > 0 ? (
+        <div className="chat-transcript" aria-live="polite">
+          {turns.map((turn) => (
+            <article
+              key={turn.id}
+              className={`chat-message chat-message--${turn.role}${turn.pending ? " chat-message--pending" : ""}`}
+            >
+              <span className="chat-message-label">{turn.role === "user" ? "You" : "AI memory guide"}</span>
+              {turn.content ? <p>{turn.content}</p> : null}
+              {turn.pending && !turn.content ? (
+                <p className="chat-stream-status" role="status">
+                  {(streamStatus || "Starting...").replace(/\.{3}$/, "")}
+                  <span className="chat-stream-dots" aria-hidden="true">...</span>
+                </p>
+              ) : null}
+              {turn.role === "assistant" && turn.grounding_mode ? (
+                <span className={`chat-answer-basis chat-answer-basis--${turn.grounding_mode}`}>
+                  {ANSWER_BASIS_LABELS[turn.grounding_mode]}
+                </span>
+              ) : null}
+              {turn.role === "assistant" && turn.sources?.length ? (
+                <details className="chat-sources">
+                  <summary>View shared {turn.sources.length === 1 ? "memory source" : "memory sources"}</summary>
+                  <div className="chat-source-list">
+                    {turn.sources.map((source) => (
+                      <div className="chat-source-card" key={source.tribute_id}>
+                        <strong>{source.title}</strong>
+                        <span>Shared by {source.author_label}</span>
+                        <p>{source.snippet}</p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+              {turn.role === "assistant" && turn.request_id ? (
+                <div className="chat-feedback-row" aria-label="Rate this answer">
+                  {feedbackSent[turn.request_id] ? (
+                    <span>Thank you for the feedback.</span>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => void submitFeedback(turn, "helpful")}><ThumbsUp size={14} /> Helpful</button>
+                      <button type="button" onClick={() => void submitFeedback(turn, "inaccurate")}><ThumbsDown size={14} /> Inaccurate</button>
+                      <button type="button" onClick={() => void submitFeedback(turn, "inappropriate")}><Flag size={14} /> Inappropriate</button>
+                      <button type="button" onClick={() => void submitFeedback(turn, "too_personal")}>Too personal</button>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {error ? <p className="status error">{error}</p> : null}
+      {retryMessage ? <button className="how-link" type="button" onClick={() => void sendMessage(retryMessage)}>Try that message again</button> : null}
+
       {acknowledged ? (
         <>
           {!config?.enabled ? (
             <div className="chat-resting" role="status">
               <h2>The memory guide is resting right now.</h2>
               <p>The Ken Profile is still under review or the feature is switched off. Please visit the tribute wall.</p>
-              <ParticleButton type="button" variant="soft" onClick={() => onNavigate("/")}>Visit tribute wall</ParticleButton>
+              <ParticleButton
+                type="button"
+                variant="soft"
+                className="action-button"
+                showIcon={false}
+                onClick={() => onNavigate("/")}
+              >
+                Visit tribute wall
+              </ParticleButton>
             </div>
           ) : (
             <>
@@ -416,60 +483,6 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
                   ))}
                 </div>
               ) : null}
-
-              <div className="chat-transcript" aria-live="polite">
-                {turns.map((turn) => (
-                  <article
-                    key={turn.id}
-                    className={`chat-message chat-message--${turn.role}${turn.pending ? " chat-message--pending" : ""}`}
-                  >
-                    <span className="chat-message-label">{turn.role === "user" ? "You" : "AI memory guide"}</span>
-                    {turn.content ? <p>{turn.content}</p> : null}
-                    {turn.pending && !turn.content ? (
-                      <p className="chat-stream-status" role="status">
-                        {(streamStatus || "Starting...").replace(/\.{3}$/, "")}
-                        <span className="chat-stream-dots" aria-hidden="true">...</span>
-                      </p>
-                    ) : null}
-                    {turn.role === "assistant" && turn.grounding_mode ? (
-                      <span className={`chat-answer-basis chat-answer-basis--${turn.grounding_mode}`}>
-                        {ANSWER_BASIS_LABELS[turn.grounding_mode]}
-                      </span>
-                    ) : null}
-                    {turn.role === "assistant" && turn.sources?.length ? (
-                      <details className="chat-sources">
-                        <summary>View shared {turn.sources.length === 1 ? "memory source" : "memory sources"}</summary>
-                        <div className="chat-source-list">
-                          {turn.sources.map((source) => (
-                            <div className="chat-source-card" key={source.tribute_id}>
-                              <strong>{source.title}</strong>
-                              <span>Shared by {source.author_label}</span>
-                              <p>{source.snippet}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    ) : null}
-                    {turn.role === "assistant" && turn.request_id ? (
-                      <div className="chat-feedback-row" aria-label="Rate this answer">
-                        {feedbackSent[turn.request_id] ? (
-                          <span>Thank you for the feedback.</span>
-                        ) : (
-                          <>
-                            <button type="button" onClick={() => void submitFeedback(turn, "helpful")}><ThumbsUp size={14} /> Helpful</button>
-                            <button type="button" onClick={() => void submitFeedback(turn, "inaccurate")}><ThumbsDown size={14} /> Inaccurate</button>
-                            <button type="button" onClick={() => void submitFeedback(turn, "inappropriate")}><Flag size={14} /> Inappropriate</button>
-                            <button type="button" onClick={() => void submitFeedback(turn, "too_personal")}>Too personal</button>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-
-              {error ? <p className="status error">{error}</p> : null}
-              {retryMessage ? <button className="how-link" type="button" onClick={() => void sendMessage(retryMessage)}>Try that message again</button> : null}
 
               <form className="chat-composer" onSubmit={handleSubmit}>
                 <textarea

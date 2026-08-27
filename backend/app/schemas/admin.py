@@ -2,7 +2,14 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
-from app.schemas.tribute import AIConsentBasis, AIUseStatus, TributeStatus, Visibility
+from app.schemas.tribute import (
+    AIConsentBasis,
+    AIUseStatus,
+    MemoryDecoration,
+    PaperTheme,
+    TributeStatus,
+    Visibility,
+)
 
 
 class AdminLoginRequest(BaseModel):
@@ -26,6 +33,8 @@ class AdminTributePatch(BaseModel):
     occasion_date: date | None = None
     moderation_notes: str | None = Field(default=None, max_length=2000)
     image_data_url: str | None = Field(default=None, max_length=4_500_000)
+    paper_theme: PaperTheme | None = None
+    decorations: list[MemoryDecoration] | None = Field(default=None, max_length=6)
     ai_consent: bool | None = None
     ai_consent_basis: AIConsentBasis | None = None
     ai_redacted_content: str | None = Field(default=None, max_length=5000)
