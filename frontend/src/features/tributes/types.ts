@@ -1,4 +1,4 @@
-export type TributeType = "message" | "memory_recollection";
+export type TributeType = "message";
 export type DisplayMode = "named" | "anonymous";
 export type TributeStatus = "pending" | "approved" | "rejected" | "hidden";
 export type Visibility = "public" | "private";

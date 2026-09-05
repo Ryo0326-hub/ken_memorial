@@ -203,6 +203,19 @@ h3 {
   white-space: nowrap;
 }
 
+.dear-ken-icon-link {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.dear-ken-icon {
+  display: block;
+  width: 100px;
+  height: 100px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
 .hero-photo-frame {
   width: 100%;
   padding: 0.42rem;
@@ -1413,6 +1426,15 @@ textarea {
   gap: 0.75rem;
 }
 
+.submission-heading-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+
+.submission-display-name-field {
+  grid-column: span 2;
+}
+
 .admin-panel {
   background: rgba(255, 250, 243, 0.95);
 }
@@ -1711,6 +1733,10 @@ textarea {
   .filters,
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .submission-display-name-field {
+    grid-column: auto;
   }
 
   .filters {
