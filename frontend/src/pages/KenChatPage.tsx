@@ -113,6 +113,19 @@ async function readError(response: Response, fallback: string): Promise<string> 
   }
 }
 
+function ChatLoadingIndicator({ label }: { label: string }) {
+  return (
+    <span className="chat-loading-indicator">
+      <span className="chat-loading-trail" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
 export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [config, setConfig] = useState<ChatConfig | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>(readTurns);
@@ -356,8 +369,7 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
 
       {loading ? (
         <p className="chat-connection-status" role="status" aria-live="polite">
-          Connecting to the memory guide
-          <span className="chat-stream-dots" aria-hidden="true">...</span>
+          <ChatLoadingIndicator label="Connecting to the memory guide" />
         </p>
       ) : null}
 
@@ -409,8 +421,9 @@ export function KenChatPage({ onNavigate }: { onNavigate: (path: string) => void
               {turn.content ? <p>{turn.content}</p> : null}
               {turn.pending && !turn.content ? (
                 <p className="chat-stream-status" role="status">
-                  {(streamStatus || "Starting...").replace(/\.{3}$/, "")}
-                  <span className="chat-stream-dots" aria-hidden="true">...</span>
+                  <ChatLoadingIndicator
+                    label={(streamStatus || "Starting...").replace(/\.{3}$/, "")}
+                  />
                 </p>
               ) : null}
               {turn.role === "assistant" && turn.grounding_mode ? (

@@ -1439,7 +1439,10 @@ function AdminDashboardPage({
                 <div className="admin-ai-card-head">
                   <div>
                     <h3>AI Knowledge Use</h3>
-                    <p>Only sanitized text is used to help answer questions about Ken. The public tribute itself is unchanged.</p>
+                    <p>
+                      For consented tributes, approval also indexes the reviewed text below. Remove
+                      private details before approving; the public tribute itself is unchanged.
+                    </p>
                   </div>
                   <span className={`persona-status persona-status--${patchForm.ai_use_status}`}>
                     {patchForm.ai_use_status.replace("_", " ")}
@@ -1569,7 +1572,8 @@ function makePatchForm(tribute: Tribute): AdminPatchForm {
     ai_consent: tribute.ai_consent ?? false,
     ai_consent_basis: tribute.ai_consent_basis ?? "",
     ai_use_status: tribute.ai_use_status ?? "excluded",
-    ai_redacted_content: tribute.ai_redacted_content ?? ""
+    ai_redacted_content:
+      tribute.ai_redacted_content ?? (tribute.ai_consent ? tribute.content : "")
   };
 }
 

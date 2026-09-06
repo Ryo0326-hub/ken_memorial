@@ -192,6 +192,25 @@ def test_indexing_is_idempotent_and_revocation_deletes_chunks(session_factory) -
         assert db.scalar(select(func.count(MemoryChunkModel.id))) == 0
 
 
+def test_approval_indexes_opted_in_pending_review_content(session_factory) -> None:
+    with session_factory() as db:
+        tribute = make_tribute(
+            title="🏔️",
+            ai_use_status=AIUseStatus.pending_review,
+            ai_redacted_content=None,
+        )
+        db.add(tribute)
+        db.commit()
+        db.refresh(tribute)
+
+        updated = sync_tribute_memory(db, tribute, FakeGateway(tribute.id))
+
+        assert updated.ai_use_status == AIUseStatus.included
+        assert updated.ai_redacted_content == tribute.content
+        assert updated.ai_indexed_at is not None
+        assert db.scalar(select(func.count(MemoryChunkModel.id))) == 1
+
+
 def test_retrieval_excludes_hidden_private_and_nonconsented_sources(session_factory) -> None:
     with session_factory() as db:
         eligible = make_tribute(title="Eligible")

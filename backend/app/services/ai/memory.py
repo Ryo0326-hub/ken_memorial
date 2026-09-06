@@ -34,6 +34,30 @@ def is_eligible_for_ai(tribute: TributeModel) -> bool:
     )
 
 
+def prepare_approved_tribute_for_indexing(tribute: TributeModel) -> TributeModel:
+    """Complete the AI-review handoff when an opted-in tribute is approved.
+
+    Public approval is the human review boundary. A pending-review tribute can
+    therefore use its reviewed public content as the initial sanitized text.
+    Explicitly excluded tributes are intentionally left untouched.
+    """
+    ready_for_review_handoff = bool(
+        tribute.status == TributeStatus.approved
+        and tribute.visibility == Visibility.public
+        and tribute.ai_consent
+        and tribute.ai_consent_basis is not None
+        and tribute.ai_consent_policy_version
+        and tribute.ai_use_status in {AIUseStatus.pending_review, AIUseStatus.included}
+    )
+    if not ready_for_review_handoff:
+        return tribute
+
+    if not (tribute.ai_redacted_content or "").strip():
+        tribute.ai_redacted_content = tribute.content.strip()
+    tribute.ai_use_status = AIUseStatus.included
+    return tribute
+
+
 def chunk_memory_text(text: str, target_chars: int = 1600, overlap_chars: int = 180) -> list[str]:
     paragraphs = [part.strip() for part in text.replace("\r\n", "\n").split("\n\n") if part.strip()]
     if not paragraphs:
@@ -66,6 +90,7 @@ def sync_tribute_memory(
     tribute: TributeModel,
     gateway: OpenAIGateway | None = None,
 ) -> TributeModel:
+    prepare_approved_tribute_for_indexing(tribute)
     if not is_eligible_for_ai(tribute):
         remove_memory_chunks(db, tribute)
         return tribute
@@ -125,6 +150,7 @@ def sync_tribute_memory(
         current = db.get(TributeModel, tribute.id)
         if current is None:
             raise
+        prepare_approved_tribute_for_indexing(current)
         current.ai_use_status = AIUseStatus.index_error
         current.ai_index_error = f"{type(exc).__name__}: {str(exc)[:500]}"
         current.ai_indexed_at = None
