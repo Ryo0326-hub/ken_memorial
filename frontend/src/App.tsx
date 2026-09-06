@@ -558,7 +558,7 @@ function TributesPage() {
 
         <div className="filters tribute-wall-filter">
           <label>
-            Author Visibility
+            <span className="tribute-wall-filter__label">Author Visibility</span>
             <select
               value={filters.anonymous}
               onChange={(event) =>
