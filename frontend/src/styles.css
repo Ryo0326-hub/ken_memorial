@@ -677,6 +677,31 @@ h2 {
   gap: 0.7rem;
 }
 
+.tribute-wall-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+.tribute-wall-filter {
+  flex: 0 1 240px;
+  width: min(240px, 100%);
+  margin: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tribute-wall-filter label {
+  gap: 0.28rem;
+  font-size: 0.82rem;
+}
+
+.tribute-wall-filter select {
+  min-height: 40px;
+  padding: 0.44rem 0.58rem;
+}
+
 label {
   display: grid;
   gap: 0.35rem;
@@ -1110,6 +1135,96 @@ textarea {
   font-size: 1.3rem;
   line-height: 1.45;
   color: rgba(39, 26, 16, 0.92);
+}
+
+.tribute-card__open {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.tribute-card__open:focus-visible {
+  border-radius: 5px;
+  outline: 3px solid rgba(48, 91, 116, 0.72);
+  outline-offset: 7px;
+}
+
+.tribute-card__preview-photo {
+  display: block;
+  cursor: pointer;
+}
+
+.tribute-card__expanded-photo {
+  cursor: default;
+}
+
+.tribute-card__read-more {
+  display: inline-block;
+  margin-top: 0.55rem;
+  border-bottom: 1px solid currentColor;
+  color: rgba(65, 48, 35, 0.72);
+  font-family: var(--font-handwritten, "Bradley Hand", "Segoe Print", cursive);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.tribute-detail-dialog {
+  width: min(680px, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 1.5rem);
+  overflow: auto;
+  border: 0;
+  background: transparent;
+  padding: 1.4rem;
+}
+
+.tribute-detail-dialog::backdrop {
+  background: rgba(31, 20, 14, 0.64);
+  backdrop-filter: blur(5px);
+}
+
+.tribute-detail-dialog__frame {
+  position: relative;
+  padding: 0.65rem;
+}
+
+.tribute-detail-dialog__close {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  right: 0;
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(91, 67, 48, 0.28);
+  border-radius: 50%;
+  background: rgba(255, 253, 247, 0.94);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(42, 29, 20, 0.2);
+}
+
+.tribute-detail-dialog__close svg {
+  width: 19px;
+  height: 19px;
+}
+
+.tribute-card--expanded,
+.tribute-card--expanded:nth-child(2n),
+.tribute-card--expanded:nth-child(3n),
+.tribute-card--expanded:nth-child(4n) {
+  width: 100%;
+  transform: none;
+}
+
+.tribute-card--expanded p:not(.card-meta):not(.posted-date) {
+  white-space: pre-wrap;
 }
 
 .tribute-form {
@@ -1771,6 +1886,16 @@ textarea {
 
   .tribute-card p {
     font-size: 1.18rem;
+  }
+
+  .tribute-detail-dialog {
+    width: calc(100vw - 0.5rem);
+    max-height: calc(100dvh - 0.5rem);
+    padding: 0.65rem;
+  }
+
+  .tribute-detail-dialog__frame {
+    padding: 0.55rem;
   }
 
   .card-meta {
@@ -2447,6 +2572,19 @@ textarea {
     min-height: 480px;
     padding: 0.95rem 0.75rem;
     border-width: 4px;
+  }
+
+  .tribute-wall-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .tribute-wall-filter {
+    align-self: flex-end;
+    flex-basis: auto;
+    width: min(210px, 100%);
   }
 
   .hero-photo-float {

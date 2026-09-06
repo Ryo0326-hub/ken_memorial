@@ -1,5 +1,5 @@
 import { CSSProperties, DragEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { Ban, Check, EyeOff, House, LogOut, Send } from "lucide-react";
+import { Ban, Check, EyeOff, House, LogOut, Send, X } from "lucide-react";
 
 import { ParticleButton } from "@/components/ui/particle-button";
 import { AdminAiPanel } from "@/components/AdminAiPanel";
@@ -504,10 +504,21 @@ function TributesPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [expandedTribute, setExpandedTribute] = useState<Tribute | null>(null);
+  const tributeDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     void loadTributes();
   }, [filters]);
+
+  useEffect(() => {
+    const dialog = tributeDialogRef.current;
+    if (!expandedTribute || !dialog) return;
+    if (!dialog.open) dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [expandedTribute]);
 
   async function loadTributes(): Promise<void> {
     try {
@@ -536,29 +547,33 @@ function TributesPage() {
     }
   }
 
+  const expandedImageUrl = expandedTribute ? getTributeImageUrl(expandedTribute) : null;
+
   return (
     <section className="content-panel reveal">
-      <div className="section-head">
-        <h2 className="tribute-wall-title">Tribute Wall</h2>
-      </div>
+      <div className="tribute-wall-toolbar">
+        <div className="section-head">
+          <h2 className="tribute-wall-title">Tribute Wall</h2>
+        </div>
 
-      <div className="filters">
-        <label>
-          Author Visibility
-          <select
-            value={filters.anonymous}
-            onChange={(event) =>
-              setFilters((prev) => ({
-                ...prev,
-                anonymous: event.target.value as TributeFilters["anonymous"]
-              }))
-            }
-          >
-            <option value="all">All</option>
-            <option value="false">Named</option>
-            <option value="true">Anonymous</option>
-          </select>
-        </label>
+        <div className="filters tribute-wall-filter">
+          <label>
+            Author Visibility
+            <select
+              value={filters.anonymous}
+              onChange={(event) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  anonymous: event.target.value as TributeFilters["anonymous"]
+                }))
+              }
+            >
+              <option value="all">All</option>
+              <option value="false">Named</option>
+              <option value="true">Anonymous</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {loading && (
@@ -597,42 +612,125 @@ function TributesPage() {
           tributes.map((tribute) => {
             const noteTone = normalizeStickyNoteColor(tribute.sticky_note_color);
             const imageUrl = getTributeImageUrl(tribute);
+            const isTruncated = tribute.content.length > 180;
             return (
               <article
-                className={`tribute-card note-${noteTone} pen-${tribute.pen_style}${imageUrl ? " note-double-row" : ""}`}
+                className={`tribute-card note-${noteTone} pen-${tribute.pen_style}${imageUrl ? " note-double-row" : ""}${isTruncated ? " tribute-card--expandable" : ""}`}
                 key={tribute.id}
                 style={toStickyNoteStyle(tribute.sticky_note_color)}
               >
-                {tribute.is_featured ? (
-                  <div className="chip-row">
-                    <span className="chip feature">Featured</span>
-                  </div>
-                ) : null}
-                {imageUrl ? (
+                {isTruncated ? (
                   <button
                     type="button"
-                    className="photo-frame card-photo-frame"
-                    onClick={() => setLightboxImage(imageUrl)}
-                    aria-label="Open tribute image"
+                    className="tribute-card__open"
+                    onClick={() => setExpandedTribute(tribute)}
+                    aria-label={`Read the full message from ${tribute.public_author_label}`}
                   >
-                    <img
-                      src={imageUrl}
-                      alt="Tribute memory"
-                      className="framed-photo"
-                      loading="lazy"
-                      decoding="async"
-                    />
+                    {tribute.is_featured ? (
+                      <div className="chip-row">
+                        <span className="chip feature">Featured</span>
+                      </div>
+                    ) : null}
+                    {imageUrl ? (
+                      <span className="photo-frame card-photo-frame tribute-card__preview-photo">
+                        <img
+                          src={imageUrl}
+                          alt="Tribute memory"
+                          className="framed-photo"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </span>
+                    ) : null}
+                    {tribute.title ? <h3>{tribute.title}</h3> : null}
+                    <p>{toExcerpt(tribute.content)}</p>
+                    <p className="card-meta">- {tribute.public_author_label}</p>
+                    <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
+                    <span className="tribute-card__read-more">Read full message</span>
                   </button>
-                ) : null}
-                {tribute.title ? <h3>{tribute.title}</h3> : null}
-                <p>{toExcerpt(tribute.content)}</p>
-                <p className="card-meta">- {tribute.public_author_label}</p>
-                <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
+                ) : (
+                  <>
+                    {tribute.is_featured ? (
+                      <div className="chip-row">
+                        <span className="chip feature">Featured</span>
+                      </div>
+                    ) : null}
+                    {imageUrl ? (
+                      <button
+                        type="button"
+                        className="photo-frame card-photo-frame"
+                        onClick={() => setLightboxImage(imageUrl)}
+                        aria-label="Open tribute image"
+                      >
+                        <img
+                          src={imageUrl}
+                          alt="Tribute memory"
+                          className="framed-photo"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </button>
+                    ) : null}
+                    {tribute.title ? <h3>{tribute.title}</h3> : null}
+                    <p>{tribute.content}</p>
+                    <p className="card-meta">- {tribute.public_author_label}</p>
+                    <p className="posted-date">{toPostedDateLabel(tribute.submitted_at)}</p>
+                  </>
+                )}
               </article>
             );
           })
         )}
       </div>
+
+      {expandedTribute ? (
+        <dialog
+          ref={tributeDialogRef}
+          className="tribute-detail-dialog"
+          aria-label={`Full message from ${expandedTribute.public_author_label}`}
+          onCancel={(event) => {
+            event.preventDefault();
+            setExpandedTribute(null);
+          }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setExpandedTribute(null);
+          }}
+        >
+          <div className="tribute-detail-dialog__frame">
+            <button
+              type="button"
+              className="tribute-detail-dialog__close"
+              onClick={() => setExpandedTribute(null)}
+              aria-label="Close full message"
+            >
+              <X aria-hidden="true" />
+            </button>
+            <article
+              className={`tribute-card tribute-card--expanded note-${normalizeStickyNoteColor(expandedTribute.sticky_note_color)} pen-${expandedTribute.pen_style}`}
+              style={toStickyNoteStyle(expandedTribute.sticky_note_color)}
+            >
+              {expandedTribute.is_featured ? (
+                <div className="chip-row">
+                  <span className="chip feature">Featured</span>
+                </div>
+              ) : null}
+              {expandedImageUrl ? (
+                <div className="photo-frame card-photo-frame tribute-card__expanded-photo">
+                  <img
+                    src={expandedImageUrl}
+                    alt="Tribute memory"
+                    className="framed-photo"
+                  />
+                </div>
+              ) : null}
+              {expandedTribute.title ? <h3>{expandedTribute.title}</h3> : null}
+              <p>{expandedTribute.content}</p>
+              <p className="card-meta">- {expandedTribute.public_author_label}</p>
+              <p className="posted-date">{toPostedDateLabel(expandedTribute.submitted_at)}</p>
+            </article>
+          </div>
+        </dialog>
+      ) : null}
 
       {lightboxImage && (
         <div className="lightbox-backdrop" role="presentation" onClick={() => setLightboxImage(null)}>
@@ -774,7 +872,7 @@ function SubmitPage() {
   return (
     <section className="content-panel reveal">
       <div className="section-head">
-        <h2>Leave a Tribute</h2>
+        <h2>Leave a Message</h2>
       </div>
 
       <form className="tribute-form" onSubmit={handleSubmit}>
